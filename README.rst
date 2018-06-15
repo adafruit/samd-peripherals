@@ -27,7 +27,11 @@ or updated from before people will need to:
 
 The header files in `samd` define the common API between the two series. Logic with most code shared
 lives in a corresponding .c file. Functions with mostly different implementations are in a .c file
-of the same name under the series specific directory, such as `samd21`.
+of the same name under the series specific directory, such as `samd21`. Includes are relative to the
+top of the repo so make sure to add the location of the library to your includes path with something
+like:
+
+`-Iperipherals/`
 
 In your Makefile create a variable which stores the series such as `CHIP_FAMILY` and alter the
 source files depending on it. For example (from [here](https://github.com/adafruit/circuitpython/blob/master/ports/atmel-samd/Makefile)):

@@ -27,7 +27,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "peripherals/timers.h"
+#include "samd/timers.h"
 
 //#include "common-hal/pulseio/PulseOut.h"
 

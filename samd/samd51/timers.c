@@ -27,7 +27,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "peripherals/timers.h"
+#include "samd/timers.h"
 
 #include "hri/hri_gclk_d51.h"
 

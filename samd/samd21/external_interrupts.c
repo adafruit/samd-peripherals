@@ -24,10 +24,10 @@
  * THE SOFTWARE.
  */
 
-#include "peripherals/external_interrupts.h"
+#include "samd/external_interrupts.h"
 
 #include "hpl/gclk/hpl_gclk_base.h"
-#include "peripherals/clocks.h"
+#include "samd/clocks.h"
 #include "sam.h"
 
 void turn_on_external_interrupt_controller(void) {

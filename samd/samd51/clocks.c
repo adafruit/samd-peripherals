@@ -24,7 +24,7 @@
  * THE SOFTWARE.
  */
 
-#include "peripherals/clocks.h"
+#include "samd/clocks.h"
 
 #include "hpl_gclk_config.h"
 

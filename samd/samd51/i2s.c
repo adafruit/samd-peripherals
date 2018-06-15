@@ -24,9 +24,9 @@
  * THE SOFTWARE.
  */
 
-#include "peripherals/i2s.h"
+#include "samd/i2s.h"
 
-#include "peripherals/clocks.h"
+#include "samd/clocks.h"
 
 #include "hpl/gclk/hpl_gclk_base.h"
 

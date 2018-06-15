@@ -26,7 +26,7 @@
 
 #include <stdint.h>
 
-#include "peripherals/events.h"
+#include "samd/events.h"
 #include "py/runtime.h"
 
 uint8_t find_async_event_channel(void) {

@@ -33,10 +33,10 @@
 #include "mpconfigport.h"
 
 #ifdef SAMD21
-#include "peripherals/samd21/pins.h"
+#include "samd/samd21/pins.h"
 #endif
 #ifdef SAMD51
-#include "peripherals/samd51/pins.h"
+#include "samd/samd51/pins.h"
 #endif
 
 #endif // MICROPY_INCLUDED_ATMEL_SAMD_PERIPHERALS_PINS_H

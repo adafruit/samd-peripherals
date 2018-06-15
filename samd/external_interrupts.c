@@ -27,7 +27,7 @@
 #include "common-hal/pulseio/PulseIn.h"
 #include "common-hal/rotaryio/IncrementalEncoder.h"
 #include "shared-bindings/microcontroller/__init__.h"
-#include "peripherals/external_interrupts.h"
+#include "samd/external_interrupts.h"
 
 #include "sam.h"
 

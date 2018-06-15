@@ -24,9 +24,9 @@
  * THE SOFTWARE.
  */
 
-#include "peripherals/events.h"
+#include "samd/events.h"
 
-#include "peripherals/clocks.h"
+#include "samd/clocks.h"
 
 #include "py/runtime.h"
 

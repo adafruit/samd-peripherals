@@ -27,7 +27,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "peripherals/clocks.h"
+#include "samd/clocks.h"
 
 #include "hal/include/hal_flash.h"
 
