@@ -71,5 +71,10 @@ uint32_t clock_get_frequency(uint8_t type, uint8_t index);
 uint32_t clock_get_calibration(uint8_t type, uint8_t index);
 int clock_set_calibration(uint8_t type, uint8_t index, uint32_t val);
 void save_usb_clock_calibration(void);
+#ifdef SAMD51
+void freqm_init(uint8_t ref_clock, uint8_t msr_clock, uint8_t cycles);
+uint32_t freqm_read(void);
+void freqm_deinit(void);
+#endif
 
 #endif  // MICROPY_INCLUDED_ATMEL_SAMD_CLOCKS_H

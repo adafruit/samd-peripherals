@@ -49,6 +49,7 @@ void connect_gclk_to_peripheral(uint8_t gclk, uint8_t peripheral) {
 }
 
 void disconnect_gclk_from_peripheral(uint8_t gclk, uint8_t peripheral) {
+    // @sommersoft: why is gclk passed into this? it isn't used.
     GCLK->PCHCTRL[peripheral].reg = 0;
 }
 
@@ -339,6 +340,71 @@ int clock_set_calibration(uint8_t type, uint8_t index, uint32_t val) {
     return -2;
 }
 
+void freqm_init(uint8_t ref_clock, uint8_t msr_clock, uint8_t ref_num) {
+    if (!ref_num) {
+        return;
+    }
+
+    MCLK->APBAMASK.bit.FREQM_ = true;
+    
+    // check if our reference clock is running
+    if (!gclk_enabled(11)) {
+        enable_clock_generator_sync(11, GCLK_GENCTRL_SRC_OSCULP32K, 1, false);
+    }
+
+    if (FREQM->CTRLA.bit.ENABLE != 0) {
+        FREQM->CTRLA.reg = FREQM_CTRLA_SWRST;
+        while (FREQM->SYNCBUSY.bit.SWRST != 0) {}
+    }
+
+    // setup the FREQM Reference and Measure sources
+    connect_gclk_to_peripheral(ref_clock, FREQM_GCLK_ID_REF);
+    connect_gclk_to_peripheral(msr_clock, FREQM_GCLK_ID_MSR);
+    
+    // set the number of Reference clock cycles to measure
+    FREQM->CFGA.reg = FREQM_CFGA_REFNUM(ref_num);
+
+    FREQM->CTRLA.reg = FREQM_CTRLA_ENABLE;
+    while (FREQM->SYNCBUSY.bit.ENABLE != 0) {
+        // is there a way to breakout if we're stuck waiting for clocks that
+        // can't sync?
+    }
+}
+
+void freqm_deinit() {
+    disconnect_gclk_from_peripheral(GCLK_PCHCTRL_GEN_GCLK0_Val, FREQM_GCLK_ID_REF);
+    disconnect_gclk_from_peripheral(GCLK_PCHCTRL_GEN_GCLK0_Val, FREQM_GCLK_ID_MSR);
+
+    FREQM->CTRLA.reg = FREQM_CTRLA_SWRST;
+    while (FREQM->SYNCBUSY.bit.SWRST != 0) {}
+
+    MCLK->APBAMASK.bit.FREQM_ = false;
+
+    disable_clock_generator(11);
+}
+
+uint32_t freqm_read() {
+    uint32_t frequency_measured = 0;
+    FREQM->CTRLB.bit.START = 1;
+    while (FREQM->STATUS.bit.BUSY != 0) {}
+
+    if (FREQM->STATUS.bit.OVF != 0){
+        // datasheet says to either lower the REFNUM or select a
+        // faster reference clock. since the periphs are broken out now
+        // should we just return -1? that makes any false return, including
+        // zero, have to think that the issue is the overflow. however,
+        // you could check if the return is < 0, which gives 2 useable states:
+        // 1) < 0 = overflow error
+        // 2) >= 0 = value
+        frequency_measured = -1;
+    } else {
+        // FREQM_MSR = (VALUE / REFNUM) * FREQM_REF (32678 for OSC32K)
+        uint32_t val = FREQM_VALUE_VALUE(FREQM->VALUE.bit.VALUE);
+        uint8_t ref_num = FREQM->CFGA.bit.REFNUM;
+        frequency_measured = (val / ref_num) * 32678;
+    }
+    return frequency_measured;
+}
 
 void save_usb_clock_calibration(void) {
 }
@@ -367,6 +433,7 @@ CLOCK_GCLK_(OSCCTRL, FDPLL1);
 CLOCK_GCLK_(OSCCTRL, FDPLL032K); // GCLK_OSCCTRL_FDPLL1_32K, GCLK_SDHC0_SLOW, GCLK_SDHC1_SLOW, GCLK_SERCOM[0..7]_SLOW
 CLOCK_GCLK(EIC);
 CLOCK_GCLK_(FREQM, MSR);
+CLOCK_GCLK_(FREQM, REF);
 // 6: GCLK_FREQM_REF
 CLOCK_GCLK_(SERCOM0, CORE);
 CLOCK_GCLK_(SERCOM1, CORE);
@@ -432,6 +499,7 @@ STATIC const mp_rom_map_elem_t samd_clock_global_dict_table[] = {
     CLOCK_ENTRY_(OSCCTRL, FDPLL032K),
     CLOCK_ENTRY(EIC),
     CLOCK_ENTRY_(FREQM, MSR),
+    CLOCK_ENTRY_(FREQM, REF),
     CLOCK_ENTRY_(SERCOM0, CORE),
     CLOCK_ENTRY_(SERCOM1, CORE),
     CLOCK_ENTRY(TC0_TC1),
