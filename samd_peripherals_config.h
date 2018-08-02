@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2017 Scott Shawcroft for Adafruit Industries
+ * Copyright (c) 2018 Scott Shawcroft for Adafruit Industries
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,10 +24,19 @@
  * THE SOFTWARE.
  */
 
+// Configuration options for the peripherals library. Copy into your project and edit
+// it as needed. Ensure it's in an include path because the library does:
+// #include "samd_peripherals_config.h"
+
 #ifndef SAMD_PERIPHERALS_CONFIG_H
 #define SAMD_PERIPHERALS_CONFIG_H
 
+// Adds additional struct fields into mcu_pin_obj_t at the beginning. For example, CircuitPython
+// uses this to add the Python type info into the struct.
+#define PIN_PREFIX_FIELDS
+
+// Values for the additional struct fields in mcu_pin_obj_t. They will be the same for all pins. For
+// example, CircuitPython uses this to add the Python type info into the struct.
 #define PIN_PREFIX_VALUES
-#define PIN_PREFIX_FIELDS 
 
 #endif // SAMD_PERIPHERALS_CONFIG_H

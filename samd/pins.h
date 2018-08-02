@@ -58,11 +58,6 @@ typedef struct {
 #endif
 #define NUM_SERCOMS_PER_PIN 2
 
-#ifndef PIN_PREFIX_FIELDS
-#define PIN_PREFIX_FIELDS
-#define PIN_PREFIX_VALUES
-#endif
-
 typedef struct {
     PIN_PREFIX_FIELDS
     uint8_t number;
