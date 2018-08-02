@@ -24,13 +24,12 @@
  * THE SOFTWARE.
  */
 
-// DO NOT include this file directly. Use shared-bindings/microcontroller/Pin.h instead to ensure
-// that all necessary includes are already included.
-
 #ifndef MICROPY_INCLUDED_ATMEL_SAMD_PERIPHERALS_SAMD21_PINS_H
 #define MICROPY_INCLUDED_ATMEL_SAMD_PERIPHERALS_SAMD21_PINS_H
 
 #include "include/sam.h"
+
+#include "samd_peripherals_config.h"
 
 void reset_pin(uint8_t pin);
 

@@ -30,7 +30,45 @@
 #ifndef MICROPY_INCLUDED_ATMEL_SAMD_PERIPHERALS_PINS_H
 #define MICROPY_INCLUDED_ATMEL_SAMD_PERIPHERALS_PINS_H
 
-#include "mpconfigport.h"
+#include <stdint.h>
+#include <stdbool.h>
+
+#include "include/sam.h"
+
+#include "samd_peripherals_config.h"
+
+typedef struct {
+    uint8_t index:6;            // 0, 1, etc. corresponding to SERCOM<n>.
+    uint8_t pad:2;              // which of the four SERCOM pads to use
+} pin_sercom_t;
+
+typedef struct {
+    uint8_t index:4;
+    bool is_tc:1;
+    uint8_t wave_output:3;
+} pin_timer_t;
+
+#ifdef SAMD21
+    #define NUM_TIMERS_PER_PIN 2
+    #define NUM_ADC_PER_PIN 1
+#endif
+#ifdef SAMD51
+    #define NUM_TIMERS_PER_PIN 3
+    #define NUM_ADC_PER_PIN 2
+#endif
+#define NUM_SERCOMS_PER_PIN 2
+
+typedef struct {
+    PIN_PREFIX_FIELDS
+    uint8_t number;
+    bool has_extint:1;
+    uint8_t extint_channel:7;
+    bool has_touch:1;
+    uint8_t touch_y_line:7; // 0 - 15. Assumed to be Y channel.
+    uint8_t adc_input[NUM_ADC_PER_PIN];
+    pin_timer_t timer[NUM_TIMERS_PER_PIN];
+    pin_sercom_t sercom[NUM_SERCOMS_PER_PIN];
+} mcu_pin_obj_t;
 
 #ifdef SAMD21
 #include "samd/samd21/pins.h"

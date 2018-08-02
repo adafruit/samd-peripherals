@@ -24,7 +24,7 @@
  * THE SOFTWARE.
  */
 
-#include "shared-bindings/microcontroller/Pin.h"
+#include "samd/pins.h"
 
 #define SERCOM(sercom_index, p_pad)     \
 { \
@@ -53,7 +53,7 @@
   .wave_output = p_wave_output \
 }
 
-#define NO_TIMER TCC(0xff, 0)
+#define NO_TIMER TCC(0xf, 0)
 
 #define TOUCH(y_line) \
     .has_touch = true, \
@@ -78,9 +78,8 @@
             p_primary_sercom, p_secondary_sercom, \
             p_primary_timer, p_secondary_timer) \
 const mcu_pin_obj_t pin_## p_name = { \
-    { &mcu_pin_type }, \
-    .name = MP_QSTR_## p_name, \
-    .pin = (PIN_## p_name), \
+    PIN_PREFIX_VALUES \
+    .number = (PIN_## p_name), \
     p_extint \
     p_touch \
     .adc_input = {p_adc}, \
