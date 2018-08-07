@@ -423,7 +423,7 @@ PIN(PB22, EXTINT_CHANNEL(6), NO_ADC, NO_TOUCH,
     NO_SERCOM,
     SERCOM(5, 2),
     #ifdef TC7
-    TC(7, 0, 0),
+    TC(7, 0),
     #else
     NO_TIMER,
     #endif
@@ -434,7 +434,7 @@ PIN(PB23, EXTINT_CHANNEL(7), NO_ADC, NO_TOUCH,
     NO_SERCOM,
     SERCOM(5, 3),
     #ifdef TC7
-    TC(7, 1, 1),
+    TC(7, 1),
     #else
     NO_TIMER,
     #endif
@@ -487,7 +487,7 @@ PIN(PB00, EXTINT_CHANNEL(0), ADC_INPUT(8), TOUCH(6),
     NO_SERCOM,
     SERCOM(5, 2),
     #ifdef TC7
-    TC(7, 0, 0),
+    TC(7, 0),
     #else
     NO_TIMER,
     #endif
@@ -524,5 +524,30 @@ PIN(PB03, EXTINT_CHANNEL(3), ADC_INPUT(11), TOUCH(9),
     #else
     NO_TIMER,
     #endif
+    NO_TIMER);
+#endif
+
+// For SAMR. They have one function so its hardcoded elsewhere.
+#if defined(PIN_PC16)
+PIN(PC16, NO_EXTINT, NO_ADC, NO_TOUCH,
+    NO_SERCOM,
+    NO_SERCOM,
+    NO_TIMER,
+    NO_TIMER);
+#endif
+
+#if defined(PIN_PC18)
+PIN(PC18, NO_EXTINT, NO_ADC, NO_TOUCH,
+    NO_SERCOM,
+    NO_SERCOM,
+    NO_TIMER,
+    NO_TIMER);
+#endif
+
+#if defined(PIN_PC19)
+PIN(PC19, NO_EXTINT, NO_ADC, NO_TOUCH,
+    NO_SERCOM,
+    NO_SERCOM,
+    NO_TIMER,
     NO_TIMER);
 #endif

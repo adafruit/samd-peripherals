@@ -201,4 +201,15 @@ extern const mcu_pin_obj_t pin_PB02;
 extern const mcu_pin_obj_t pin_PB03;
 #endif
 
+// For SAMR
+#ifdef PIN_PC16
+extern const mcu_pin_obj_t pin_PC16;
+#endif
+#ifdef PIN_PC18
+extern const mcu_pin_obj_t pin_PC18;
+#endif
+#ifdef PIN_PC19
+extern const mcu_pin_obj_t pin_PC19;
+#endif
+
 #endif  // MICROPY_INCLUDED_ATMEL_SAMD_PERIPHERALS_SAMD21_PINS_H
