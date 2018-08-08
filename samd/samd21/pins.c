@@ -527,7 +527,8 @@ PIN(PB03, EXTINT_CHANNEL(3), ADC_INPUT(11), TOUCH(9),
     NO_TIMER);
 #endif
 
-// For SAMR. They have one function so its hardcoded elsewhere.
+// For SAMR. These pins are only able to use SERCOM4 to talk to the radio through a special mux.
+// So, we leave everything here empty.
 #if defined(PIN_PC16)
 PIN(PC16, NO_EXTINT, NO_ADC, NO_TOUCH,
     NO_SERCOM,
