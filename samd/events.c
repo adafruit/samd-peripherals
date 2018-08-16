@@ -27,7 +27,6 @@
 #include <stdint.h>
 
 #include "samd/events.h"
-#include "py/runtime.h"
 
 uint8_t find_async_event_channel(void) {
     int8_t channel;
@@ -37,23 +36,17 @@ uint8_t find_async_event_channel(void) {
         }
     }
     if (channel < 0) {
-        mp_raise_RuntimeError("All event channels in use");
+        return EVSYS_CHANNELS;
     }
     return channel;
 }
 
-#ifdef SAMD21
-#define EVSYS_SYNCH_NUM EVSYS_CHANNELS
-#endif
 uint8_t find_sync_event_channel(void) {
     uint8_t channel;
     for (channel = 0; channel < EVSYS_SYNCH_NUM; channel++) {
         if (event_channel_free(channel)) {
             break;
         }
-    }
-    if (channel >= EVSYS_SYNCH_NUM) {
-        mp_raise_RuntimeError("All sync event channels in use");
     }
     return channel;
 }
