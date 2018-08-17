@@ -32,6 +32,11 @@
 
 #include "include/sam.h"
 
+
+#ifdef SAMD21
+#define EVSYS_SYNCH_NUM EVSYS_CHANNELS
+#endif
+
 void turn_on_event_system(void);
 void reset_event_system(void);
 uint8_t find_async_event_channel(void);
