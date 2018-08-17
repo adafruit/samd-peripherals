@@ -33,6 +33,9 @@
 
 #include "py/runtime.h"
 
+// keep track of the last glck used for FREQM
+uint8_t freqm_glck = 0xff;
+
 bool gclk_enabled(uint8_t gclk) {
     return GCLK->GENCTRL[gclk].bit.GENEN;
 }
@@ -49,7 +52,6 @@ void connect_gclk_to_peripheral(uint8_t gclk, uint8_t peripheral) {
 }
 
 void disconnect_gclk_from_peripheral(uint8_t gclk, uint8_t peripheral) {
-    // @sommersoft: why is gclk passed into this? it isn't used.
     GCLK->PCHCTRL[peripheral].reg = 0;
 }
 
@@ -340,17 +342,19 @@ int clock_set_calibration(uint8_t type, uint8_t index, uint32_t val) {
     return -2;
 }
 
-void freqm_init(uint8_t ref_clock, uint8_t msr_clock, uint8_t ref_num) {
+void freqm_init(uint8_t msr_clock, uint8_t ref_num) {
     if (!ref_num) {
+        return;
+    }
+    if (MCLK->APBAMASK.bit.FREQM_) {
         return;
     }
 
     MCLK->APBAMASK.bit.FREQM_ = true;
     
-    // check if our reference clock is running
-    if (!gclk_enabled(11)) {
-        enable_clock_generator_sync(11, GCLK_GENCTRL_SRC_OSCULP32K, 1, false);
-    }
+    uint8_t free_clock = find_free_gclk(1);
+    enable_clock_generator_sync(free_clock, GCLK_GENCTRL_SRC_OSCULP32K, 1, false);
+
 
     if (FREQM->CTRLA.bit.ENABLE != 0) {
         FREQM->CTRLA.reg = FREQM_CTRLA_SWRST;
@@ -358,6 +362,7 @@ void freqm_init(uint8_t ref_clock, uint8_t msr_clock, uint8_t ref_num) {
     }
 
     // setup the FREQM Reference and Measure sources
+    uint8_t ref_clock = GCLK_PCHCTRL_GEN(free_clock);
     connect_gclk_to_peripheral(ref_clock, FREQM_GCLK_ID_REF);
     connect_gclk_to_peripheral(msr_clock, FREQM_GCLK_ID_MSR);
     
@@ -366,21 +371,21 @@ void freqm_init(uint8_t ref_clock, uint8_t msr_clock, uint8_t ref_num) {
 
     FREQM->CTRLA.reg = FREQM_CTRLA_ENABLE;
     while (FREQM->SYNCBUSY.bit.ENABLE != 0) {
-        // is there a way to breakout if we're stuck waiting for clocks that
-        // can't sync?
     }
+    freqm_glck = free_clock;
 }
 
 void freqm_deinit() {
     disconnect_gclk_from_peripheral(GCLK_PCHCTRL_GEN_GCLK0_Val, FREQM_GCLK_ID_REF);
     disconnect_gclk_from_peripheral(GCLK_PCHCTRL_GEN_GCLK0_Val, FREQM_GCLK_ID_MSR);
 
+    disable_clock_generator(freqm_glck);
+
     FREQM->CTRLA.reg = FREQM_CTRLA_SWRST;
     while (FREQM->SYNCBUSY.bit.SWRST != 0) {}
 
     MCLK->APBAMASK.bit.FREQM_ = false;
-
-    disable_clock_generator(11);
+    freqm_glck = 0xff;
 }
 
 uint32_t freqm_read() {
@@ -390,12 +395,10 @@ uint32_t freqm_read() {
 
     if (FREQM->STATUS.bit.OVF != 0){
         // datasheet says to either lower the REFNUM or select a
-        // faster reference clock. since the periphs are broken out now
-        // should we just return -1? that makes any false return, including
-        // zero, have to think that the issue is the overflow. however,
-        // you could check if the return is < 0, which gives 2 useable states:
-        // 1) < 0 = overflow error
-        // 2) >= 0 = value
+        // faster reference clock. will return -1 here so that you
+        // can check if the return is < 0, which gives 2 useable states:
+        // 1) < 0 == overflow error
+        // 2) >= 0 == value
         frequency_measured = -1;
     } else {
         // FREQM_MSR = (VALUE / REFNUM) * FREQM_REF (32678 for OSC32K)
