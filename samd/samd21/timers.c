@@ -29,7 +29,7 @@
 
 #include "samd/timers.h"
 
-//#include "common-hal/pulseio/PulseOut.h"
+#include "timer_handler.h"
 
 #include "hpl/gclk/hpl_gclk_base.h"
 
@@ -46,7 +46,7 @@ const uint8_t tc_gclk_ids[TC_INST_NUM] = {TC3_GCLK_ID,
             };
 const uint8_t tcc_gclk_ids[3] = {TCC0_GCLK_ID, TCC1_GCLK_ID, TCC2_GCLK_ID};
 
-void turn_on_clocks(bool is_tc, uint8_t index, uint32_t gclk_index) {
+void turn_on_clocks(bool is_tc, uint8_t index, uint32_t gclk_index, uint8_t timer_handler) {
     uint8_t gclk_id;
     if (is_tc) {
         gclk_id = tc_gclk_ids[index];
@@ -61,6 +61,7 @@ void turn_on_clocks(bool is_tc, uint8_t index, uint32_t gclk_index) {
     }
     PM->APBCMASK.reg |= 1 << clock_slot;
     _gclk_enable_channel(gclk_id, gclk_index);
+    set_timer_handler(index, timer_handler);
 }
 
 void tc_set_enable(Tc* tc, bool enable) {

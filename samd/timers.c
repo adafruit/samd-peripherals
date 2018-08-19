@@ -29,9 +29,6 @@
 
 #include "timers.h"
 
-#include "common-hal/pulseio/PulseOut.h"
-#include "common-hal/pulseio/FrequencyIn.h"
-
 const uint16_t prescaler[8] = {1, 2, 4, 8, 16, 64, 256, 1024};
 
 Tc* const tc_insts[TC_INST_NUM] = TC_INSTS;
@@ -88,18 +85,6 @@ void tc_reset(Tc* tc) {
     }
 }
 
-void shared_timer_handler(bool is_tc, uint8_t index, bool pulseout) {
-    // Add calls to interrupt handlers for specific functionality here.
-    if (is_tc) {
-        if (pulseout) {
-            pulseout_interrupt_handler(index);
-            } else {
-            frequencyin_interrupt_handler(index);
-        }
-    }
-}
-
-
 #ifdef SAMD51
 #define TC_OFFSET 0
 #endif
@@ -108,126 +93,46 @@ void shared_timer_handler(bool is_tc, uint8_t index, bool pulseout) {
 #endif
 
 void TCC0_Handler(void) {
-    shared_timer_handler(false, 0, false);
+    shared_timer_handler(false, 0);
 }
 void TCC1_Handler(void) {
-    shared_timer_handler(false, 1, false);
+    shared_timer_handler(false, 1);
 }
 void TCC2_Handler(void) {
-    shared_timer_handler(false, 2, false);
+    shared_timer_handler(false, 2);
 }
 // TC0 - TC2 only exist on the SAMD51
 #ifdef TC0
 void TC0_Handler(void) {
-    if (TC0->COUNT16.EVCTRL.bit.TCEI == 1 &&
-#ifdef SAMD21
-    TC0->COUNT16.CTRLC.bit.CPTEN0 == 1) {
-#endif
-#ifdef SAMD51
-    TC0->COUNT16.CTRLA.bit.CAPTEN0 == 1) {
-#endif
-        shared_timer_handler(true, 0, false);
-    } else {
-        shared_timer_handler(true, 0, true);
-    }
+    shared_timer_handler(true, 0);
 }
 #endif
 #ifdef TC1
 void TC1_Handler(void) {
-    if (TC1->COUNT16.EVCTRL.bit.TCEI == 1 &&
-#ifdef SAMD21
-    TC1->COUNT16.CTRLC.bit.CPTEN0 == 1) {
-#endif
-#ifdef SAMD51
-    TC1->COUNT16.CTRLA.bit.CAPTEN0 == 1) {
-#endif
-        shared_timer_handler(true, 1, false);
-    } else {
-        shared_timer_handler(true, 1, true);
-    }
+    shared_timer_handler(true, 1);
 }
 #endif
 #ifdef TC2
 void TC2_Handler(void) {
-    if (TC2->COUNT16.EVCTRL.bit.TCEI == 1 &&
-#ifdef SAMD21
-    TC2->COUNT16.CTRLC.bit.CPTEN0 == 1) {
-#endif
-#ifdef SAMD51
-    TC2->COUNT16.CTRLA.bit.CAPTEN0 == 1) {
-#endif
-        shared_timer_handler(true, 2, false);
-    } else {
-        shared_timer_handler(true, 2, true);
-    }
+    shared_timer_handler(true, 2);
 }
 #endif
 void TC3_Handler(void) {
-    if (TC3->COUNT16.EVCTRL.bit.TCEI == 1 &&
-#ifdef SAMD21
-    TC3->COUNT16.CTRLC.bit.CPTEN0 == 1) {
-#endif
-#ifdef SAMD51
-    TC3->COUNT16.CTRLA.bit.CAPTEN0 == 1) {
-#endif
-        shared_timer_handler(true, 3 - TC_OFFSET, false);
-    } else {
-        shared_timer_handler(true, 3 - TC_OFFSET, true);
-    }
+    shared_timer_handler(true, 3 - TC_OFFSET);
 }
 void TC4_Handler(void) {
-    if (TC4->COUNT16.EVCTRL.bit.TCEI == 1 &&
-#ifdef SAMD21
-    TC4->COUNT16.CTRLC.bit.CPTEN0 == 1) {
-#endif
-#ifdef SAMD51
-    TC4->COUNT16.CTRLA.bit.CAPTEN0 == 1) {
-#endif
-        shared_timer_handler(true, 4 - TC_OFFSET, false);
-    } else {
-        shared_timer_handler(true, 4 - TC_OFFSET, true);
-    }
+    shared_timer_handler(true, 4 - TC_OFFSET);
 }
 void TC5_Handler(void) {
-    if (TC5->COUNT16.EVCTRL.bit.TCEI == 1 &&
-#ifdef SAMD21
-    TC5->COUNT16.CTRLC.bit.CPTEN0 == 1) {
-#endif
-#ifdef SAMD51
-    TC5->COUNT16.CTRLA.bit.CAPTEN0 == 1) {
-#endif
-        shared_timer_handler(true, 5 - TC_OFFSET, false);
-    } else {
-        shared_timer_handler(true, 5 - TC_OFFSET, true);
-    }
+    shared_timer_handler(true, 5 - TC_OFFSET);
 }
 #ifdef TC6
 void TC6_Handler(void) {
-    if (TC6->COUNT16.EVCTRL.bit.TCEI == 1 &&
-#ifdef SAMD21
-    TC6->COUNT16.CTRLC.bit.CPTEN0 == 1) {
-#endif
-#ifdef SAMD51
-    TC6->COUNT16.CTRLA.bit.CAPTEN0 == 1) {
-#endif
-        shared_timer_handler(true, 6 - TC_OFFSET, false);
-    } else {
-        shared_timer_handler(true, 6 - TC_OFFSET, true);
-    }
+    shared_timer_handler(true, 6 - TC_OFFSET);
 }
 #endif
 #ifdef TC7
 void TC7_Handler(void) {
-    if (TC7->COUNT16.EVCTRL.bit.TCEI == 1 &&
-#ifdef SAMD21
-    TC7->COUNT16.CTRLC.bit.CPTEN0 == 1) {
-#endif
-#ifdef SAMD51
-    TC7->COUNT16.CTRLA.bit.CAPTEN0 == 1) {
-#endif
-        shared_timer_handler(true, 7 - TC_OFFSET, false);
-    } else {
-        shared_timer_handler(true, 7 - TC_OFFSET, true);
-    }
+    shared_timer_handler(true, 7 - TC_OFFSET);
 }
 #endif
