@@ -33,6 +33,9 @@
 
 #include "py/runtime.h"
 
+// keep track of the last glck used for FREQM
+uint8_t freqm_glck = 0xff;
+
 bool gclk_enabled(uint8_t gclk) {
     return GCLK->GENCTRL[gclk].bit.GENEN;
 }
@@ -339,6 +342,72 @@ int clock_set_calibration(uint8_t type, uint8_t index, uint32_t val) {
     return -2;
 }
 
+void freqm_init(uint8_t msr_clock, uint8_t ref_num) {
+    if (!ref_num) {
+        return;
+    }
+    if (MCLK->APBAMASK.bit.FREQM_) {
+        return;
+    }
+
+    MCLK->APBAMASK.bit.FREQM_ = true;
+    
+    uint8_t free_clock = find_free_gclk(1);
+    enable_clock_generator_sync(free_clock, GCLK_GENCTRL_SRC_OSCULP32K, 1, false);
+
+
+    if (FREQM->CTRLA.bit.ENABLE != 0) {
+        FREQM->CTRLA.reg = FREQM_CTRLA_SWRST;
+        while (FREQM->SYNCBUSY.bit.SWRST != 0) {}
+    }
+
+    // setup the FREQM Reference and Measure sources
+    uint8_t ref_clock = GCLK_PCHCTRL_GEN(free_clock);
+    connect_gclk_to_peripheral(ref_clock, FREQM_GCLK_ID_REF);
+    connect_gclk_to_peripheral(msr_clock, FREQM_GCLK_ID_MSR);
+    
+    // set the number of Reference clock cycles to measure
+    FREQM->CFGA.reg = FREQM_CFGA_REFNUM(ref_num);
+
+    FREQM->CTRLA.reg = FREQM_CTRLA_ENABLE;
+    while (FREQM->SYNCBUSY.bit.ENABLE != 0) {
+    }
+    freqm_glck = free_clock;
+}
+
+void freqm_deinit() {
+    disconnect_gclk_from_peripheral(GCLK_PCHCTRL_GEN_GCLK0_Val, FREQM_GCLK_ID_REF);
+    disconnect_gclk_from_peripheral(GCLK_PCHCTRL_GEN_GCLK0_Val, FREQM_GCLK_ID_MSR);
+
+    disable_clock_generator(freqm_glck);
+
+    FREQM->CTRLA.reg = FREQM_CTRLA_SWRST;
+    while (FREQM->SYNCBUSY.bit.SWRST != 0) {}
+
+    MCLK->APBAMASK.bit.FREQM_ = false;
+    freqm_glck = 0xff;
+}
+
+uint32_t freqm_read() {
+    uint32_t frequency_measured = 0;
+    FREQM->CTRLB.bit.START = 1;
+    while (FREQM->STATUS.bit.BUSY != 0) {}
+
+    if (FREQM->STATUS.bit.OVF != 0){
+        // datasheet says to either lower the REFNUM or select a
+        // faster reference clock. will return -1 here so that you
+        // can check if the return is < 0, which gives 2 useable states:
+        // 1) < 0 == overflow error
+        // 2) >= 0 == value
+        frequency_measured = -1;
+    } else {
+        // FREQM_MSR = (VALUE / REFNUM) * FREQM_REF (32678 for OSC32K)
+        uint32_t val = FREQM_VALUE_VALUE(FREQM->VALUE.bit.VALUE);
+        uint8_t ref_num = FREQM->CFGA.bit.REFNUM;
+        frequency_measured = (val / ref_num) * 32678;
+    }
+    return frequency_measured;
+}
 
 void save_usb_clock_calibration(void) {
 }
@@ -367,6 +436,7 @@ CLOCK_GCLK_(OSCCTRL, FDPLL1);
 CLOCK_GCLK_(OSCCTRL, FDPLL032K); // GCLK_OSCCTRL_FDPLL1_32K, GCLK_SDHC0_SLOW, GCLK_SDHC1_SLOW, GCLK_SERCOM[0..7]_SLOW
 CLOCK_GCLK(EIC);
 CLOCK_GCLK_(FREQM, MSR);
+CLOCK_GCLK_(FREQM, REF);
 // 6: GCLK_FREQM_REF
 CLOCK_GCLK_(SERCOM0, CORE);
 CLOCK_GCLK_(SERCOM1, CORE);
@@ -432,6 +502,7 @@ STATIC const mp_rom_map_elem_t samd_clock_global_dict_table[] = {
     CLOCK_ENTRY_(OSCCTRL, FDPLL032K),
     CLOCK_ENTRY(EIC),
     CLOCK_ENTRY_(FREQM, MSR),
+    CLOCK_ENTRY_(FREQM, REF),
     CLOCK_ENTRY_(SERCOM0, CORE),
     CLOCK_ENTRY_(SERCOM1, CORE),
     CLOCK_ENTRY(TC0_TC1),
