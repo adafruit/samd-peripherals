@@ -32,8 +32,6 @@
 
 #include "include/sam.h"
 
-void reset_pin(uint8_t pin);
-
 #define MUX_C 2
 #define MUX_D 3
 #define MUX_E 4
