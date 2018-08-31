@@ -29,8 +29,6 @@
 
 #include "samd/timers.h"
 
-#include "timer_handler.h"
-
 #include "hri/hri_gclk_d51.h"
 
 const uint8_t tcc_cc_num[5] = {6, 4, 3, 2, 2};
@@ -62,7 +60,7 @@ const uint8_t tcc_gclk_ids[TCC_INST_NUM] = {TCC0_GCLK_ID,
 #endif
                                     };
 
-void turn_on_clocks(bool is_tc, uint8_t index, uint32_t gclk_index, uint8_t timer_handler) {
+void turn_on_clocks(bool is_tc, uint8_t index, uint32_t gclk_index) {
     uint8_t gclk_id;
     if (is_tc) {
         gclk_id = tc_gclk_ids[index];
@@ -71,7 +69,6 @@ void turn_on_clocks(bool is_tc, uint8_t index, uint32_t gclk_index, uint8_t time
     }
     // Turn on the clocks for the peripherals.
     if (is_tc) {
-        set_timer_handler(index, timer_handler);
         switch (index) {
             case 0:
                 MCLK->APBAMASK.reg |= MCLK_APBAMASK_TC0;
