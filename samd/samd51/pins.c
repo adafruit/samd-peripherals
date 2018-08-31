@@ -743,7 +743,7 @@ PIN(PC16, EXTINT_CHANNEL(0), NO_ADC, NO_ADC,
     #endif
     SERCOM(0, 1),
     NO_TIMER,
-    TCC(TCC0, 0),
+    TCC(0, 0),
     NO_TIMER);
 #endif
 #ifdef PIN_PC17
@@ -1034,7 +1034,7 @@ PIN(PB26, EXTINT_CHANNEL(12), NO_ADC, NO_ADC, NO_TOUCH,
     SERCOM(2, 0),
     SERCOM(4, 1),
     NO_TIMER,
-    TCC(TCC1, 2),
+    TCC(1, 2),
     NO_TIMER);
 #endif
 #ifdef PIN_PB27
