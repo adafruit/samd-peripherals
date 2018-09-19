@@ -182,7 +182,6 @@ void clock_init(void)
     }
 
     enable_clock_generator(0, GCLK_GENCTRL_SRC_DFLL48M_Val, 1);
-    enable_clock_generator(1, GCLK_GENCTRL_SRC_DFLL48M_Val, 150);
     if (board_has_crystal()) {
         enable_clock_generator(2, GCLK_GENCTRL_SRC_XOSC32K_Val, 32);
     } else {
