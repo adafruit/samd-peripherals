@@ -552,3 +552,14 @@ PIN(PC19, NO_EXTINT, NO_ADC, NO_TOUCH,
     NO_TIMER,
     NO_TIMER);
 #endif
+
+#ifdef SAMD_PIN_ARRAY
+PIN(NONE, NO_EXTINT, NO_ADC, NO_TOUCH,
+    NO_SERCOM,
+    NO_SERCOM,
+    NO_TIMER,
+    NO_TIMER)
+};
+#endif
+
+const int samd_pins_len = sizeof(samd_pins) / sizeof(mcu_pin_obj_t);
