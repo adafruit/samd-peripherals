@@ -63,6 +63,16 @@ IRQn_Type const tc_irq[TC_INST_NUM] = {
 #endif
 };
 
+uint8_t find_free_timer(void) {
+    int8_t index = TC_INST_NUM - 1;
+    for (; index >= 0; index--) {
+        if (tc_insts[index]->COUNT16.CTRLA.bit.ENABLE == 0) {
+            return index;
+        }
+    }
+    return 0xff;
+}
+
 void tc_enable_interrupts(uint8_t tc_index) {
     NVIC_DisableIRQ(tc_irq[tc_index]);
     NVIC_ClearPendingIRQ(tc_irq[tc_index]);
