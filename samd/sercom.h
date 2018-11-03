@@ -27,9 +27,10 @@
 #ifndef MICROPY_INCLUDED_ATMEL_SAMD_PERIPHERALS_SPI_H
 #define MICROPY_INCLUDED_ATMEL_SAMD_PERIPHERALS_SPI_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
-#include "mpconfigport.h"
+#include "sam.h"
 
 void samd_peripherals_sercom_clock_init(Sercom* sercom, uint8_t sercom_index);
 uint8_t samd_peripherals_get_spi_dopo(uint8_t clock_pad, uint8_t mosi_pad);
