@@ -26,6 +26,8 @@
 
 #include "samd/external_interrupts.h"
 
+#include <stddef.h>
+
 #include "samd/clocks.h"
 #include "sam.h"
 
