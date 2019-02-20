@@ -43,7 +43,7 @@ const uint8_t tcc_gclk_ids[TCC_INST_NUM];
 Tc* const tc_insts[TC_INST_NUM];
 Tcc* const tcc_insts[TCC_INST_NUM];
 
-void turn_on_clocks(bool is_tc, uint8_t index, uint32_t gclk_index, uint8_t timer_handler);
+void turn_on_clocks(bool is_tc, uint8_t index, uint32_t gclk_index);
 void tc_set_enable(Tc* tc, bool enable);
 void tcc_set_enable(Tcc* tcc, bool enable);
 void tc_wait_for_sync(Tc* tc);
@@ -54,7 +54,6 @@ void tc_enable_interrupts(uint8_t tc_index);
 void tc_disable_interrupts(uint8_t tc_index);
 
 extern void shared_timer_handler(bool is_tc, uint8_t index);
-extern void set_timer_handler(uint8_t index, uint8_t timer_handler);
 
 // Handlers
 void TCC0_Handler(void);
