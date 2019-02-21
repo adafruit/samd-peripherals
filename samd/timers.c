@@ -29,8 +29,6 @@
 
 #include "timers.h"
 
-#include "common-hal/pulseio/PulseOut.h"
-
 const uint16_t prescaler[8] = {1, 2, 4, 8, 16, 64, 256, 1024};
 
 Tc* const tc_insts[TC_INST_NUM] = TC_INSTS;
@@ -94,13 +92,6 @@ void tcc_set_enable(Tcc* tcc, bool enable) {
 void tc_reset(Tc* tc) {
     tc->COUNT16.CTRLA.bit.SWRST = 1;
     while (tc->COUNT16.CTRLA.bit.SWRST == 1) {
-    }
-}
-
-void shared_timer_handler(bool is_tc, uint8_t index) {
-    // Add calls to interrupt handlers for specific functionality here.
-    if (is_tc) {
-        pulseout_interrupt_handler(index);
     }
 }
 

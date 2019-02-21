@@ -53,6 +53,8 @@ uint8_t find_free_timer(void);
 void tc_enable_interrupts(uint8_t tc_index);
 void tc_disable_interrupts(uint8_t tc_index);
 
+extern void shared_timer_handler(bool is_tc, uint8_t index);
+
 // Handlers
 void TCC0_Handler(void);
 void TCC1_Handler(void);

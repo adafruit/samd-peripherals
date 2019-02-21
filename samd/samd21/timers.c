@@ -29,7 +29,7 @@
 
 #include "samd/timers.h"
 
-//#include "common-hal/pulseio/PulseOut.h"
+#include "timer_handler.h"
 
 #include "hpl/gclk/hpl_gclk_base.h"
 
