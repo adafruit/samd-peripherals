@@ -24,8 +24,14 @@
  * THE SOFTWARE.
  */
 
+#if CIRCUITPY_PULSEIO
 #include "common-hal/pulseio/PulseIn.h"
+#endif
+
+#if CIRCUITPY_ROTARYIO
 #include "common-hal/rotaryio/IncrementalEncoder.h"
+#endif
+
 #include "shared-bindings/microcontroller/__init__.h"
 #include "samd/external_interrupts.h"
 
@@ -39,11 +45,18 @@ static uint8_t channel_handler[EIC_EXTINT_NUM];
 
 void external_interrupt_handler(uint8_t channel) {
     uint8_t handler = channel_handler[channel];
+#if CIRCUITPY_PULSEIO
     if (handler == EIC_HANDLER_PULSEIN) {
         pulsein_interrupt_handler(channel);
-    } else if (handler == EIC_HANDLER_INCREMENTAL_ENCODER) {
+    } else
+#endif
+#if CIRCUITPY_ROTARYIO
+        if (handler == EIC_HANDLER_INCREMENTAL_ENCODER) {
         incrementalencoder_interrupt_handler(channel);
     }
+#else
+    { }
+#endif
     EIC->INTFLAG.reg = (1 << channel) << EIC_INTFLAG_EXTINT_Pos;
 }
 
