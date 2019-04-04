@@ -35,15 +35,9 @@
 // Without this there would be multiple arrays even though they are disjoint because each channel
 // has one user.
 static void *channel_data[EIC_EXTINT_NUM];
-static uint8_t channel_handler[EIC_EXTINT_NUM];
 
 void external_interrupt_handler(uint8_t channel) {
-    uint8_t handler = channel_handler[channel];
-    if (handler == EIC_HANDLER_PULSEIN) {
-        pulsein_interrupt_handler(channel);
-    } else if (handler == EIC_HANDLER_INCREMENTAL_ENCODER) {
-        incrementalencoder_interrupt_handler(channel);
-    }
+    shared_eic_handler(channel);
     EIC->INTFLAG.reg = (1 << channel) << EIC_INTFLAG_EXTINT_Pos;
 }
 
@@ -62,17 +56,13 @@ void configure_eic_channel(uint8_t eic_channel, uint32_t sense_setting) {
     #endif
 }
 
-void turn_on_eic_channel(uint8_t eic_channel, uint32_t sense_setting,
-                         uint8_t channel_interrupt_handler) {
+void turn_on_eic_channel(uint8_t eic_channel, uint32_t sense_setting) {
     // We do very light filtering using majority voting.
     sense_setting |= EIC_CONFIG_FILTEN0;
     configure_eic_channel(eic_channel, sense_setting);
     uint32_t mask = 1 << eic_channel;
     EIC->INTENSET.reg = mask << EIC_INTENSET_EXTINT_Pos;
-    if (channel_interrupt_handler != EIC_HANDLER_NO_INTERRUPT) {
-        channel_handler[eic_channel] = channel_interrupt_handler;
-        turn_on_cpu_interrupt(eic_channel);
-    }
+    turn_on_cpu_interrupt(eic_channel);
 }
 
 void turn_off_eic_channel(uint8_t eic_channel) {
