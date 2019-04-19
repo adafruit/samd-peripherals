@@ -55,6 +55,9 @@ int32_t sercom_dma_write(Sercom* sercom, const uint8_t* buffer, uint32_t length)
 int32_t sercom_dma_read(Sercom* sercom, uint8_t* buffer, uint32_t length, uint8_t tx);
 int32_t sercom_dma_transfer(Sercom* sercom, const uint8_t* buffer_out, uint8_t* buffer_in, uint32_t length);
 
+int32_t sercom_dma_write_start(Sercom* sercom, const uint8_t* buffer, uint32_t length);
+int32_t sercom_dma_write_wait(Sercom* sercom);
+
 void dma_configure(uint8_t channel_number, uint8_t trigsrc, bool output_event);
 void dma_enable_channel(uint8_t channel_number);
 void dma_disable_channel(uint8_t channel_number);

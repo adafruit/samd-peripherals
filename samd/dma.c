@@ -75,13 +75,16 @@ void init_shared_dma(void) {
 // If buffer_out is a real buffer, ignore tx.
 // DMAs buffer_out -> dest
 // DMAs src -> buffer_in
-static int32_t shared_dma_transfer(void* peripheral,
-                                   const uint8_t* buffer_out, volatile uint32_t* dest,
+static void shared_dma_transfer_start(void* peripheral,
+                                   const uint8_t* buffer_out,
+                                   volatile uint32_t* dest,
                                    volatile uint32_t* src, uint8_t* buffer_in,
                                    uint32_t length, uint8_t tx) {
+
+
     if (!dma_channel_free(SHARED_TX_CHANNEL) ||
         (buffer_in != NULL && !dma_channel_free(SHARED_RX_CHANNEL))) {
-        return -1;
+        return;
     }
 
     uint32_t beat_size = DMAC_BTCTRL_BEATSIZE_BYTE;
@@ -182,6 +185,31 @@ static int32_t shared_dma_transfer(void* peripheral,
         }
         #pragma GCC diagnostic pop
     }
+}
+
+static int32_t shared_dma_transfer_wait(void* peripheral,
+                                        const uint8_t* buffer_out,
+                                        uint8_t* buffer_in) {
+    bool sercom = true;
+    bool tx_active = false;
+    bool rx_active = false;
+    #ifdef SAMD51
+    if (peripheral == QSPI) {
+        sercom = false;
+        if (buffer_out != NULL) {
+            tx_active = true;
+        } else {
+            rx_active = true;
+        }
+    } else {
+    #endif
+        tx_active = true;
+        if (buffer_in != NULL) {
+            rx_active = true;
+        }
+    #ifdef SAMD51
+    }
+    #endif
 
     // Channels cycle between Suspend -> Pending -> Busy and back while transfering. So, we check
     // the channels transfer status for an error or completion.
@@ -210,9 +238,28 @@ static int32_t shared_dma_transfer(void* peripheral,
 
     if ((!rx_active || dma_transfer_status(SHARED_RX_CHANNEL) == DMAC_CHINTFLAG_TCMPL) &&
         (!tx_active || dma_transfer_status(SHARED_TX_CHANNEL) == DMAC_CHINTFLAG_TCMPL)) {
-        return length;
+        return 0;
     }
     return -2;
+}
+
+static int32_t shared_dma_transfer(void* peripheral,
+                                   const uint8_t* buffer_out,
+                                   volatile uint32_t* dest,
+                                   volatile uint32_t* src, uint8_t* buffer_in,
+                                   uint32_t length, uint8_t tx) {
+
+    if (!dma_channel_free(SHARED_TX_CHANNEL) ||
+        (buffer_in != NULL && !dma_channel_free(SHARED_RX_CHANNEL))) {
+        return -1;
+    }
+    shared_dma_transfer_start(peripheral, buffer_out, dest, src, buffer_in,
+                              length, tx);
+    int32_t status = shared_dma_transfer_wait(peripheral, buffer_out, buffer_in);
+    if (status < 0) {
+        return status;
+    }
+    return length;
 }
 
 
@@ -223,6 +270,15 @@ int32_t sercom_dma_transfer(Sercom* sercom, const uint8_t* buffer_out, uint8_t* 
 
 int32_t sercom_dma_write(Sercom* sercom, const uint8_t* buffer, uint32_t length) {
     return shared_dma_transfer(sercom, buffer, &sercom->SPI.DATA.reg, NULL, NULL, length, 0);
+}
+
+int32_t sercom_dma_write_start(Sercom* sercom, const uint8_t* buffer, uint32_t length) {
+    shared_dma_transfer_start(sercom, buffer, &sercom->SPI.DATA.reg, NULL, NULL, length, 0);
+    return 0;
+}
+
+int32_t sercom_dma_write_wait(Sercom* sercom) {
+    return shared_dma_transfer_wait(sercom, (const uint8_t *)1, NULL);
 }
 
 int32_t sercom_dma_read(Sercom* sercom, uint8_t* buffer, uint32_t length, uint8_t tx) {
