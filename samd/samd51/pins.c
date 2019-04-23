@@ -116,7 +116,7 @@ PIN(PA01, EXTINT_CHANNEL(1), NO_ADC, NO_ADC,
     NO_TOUCH,
     NO_SERCOM,
     SERCOM(1, 1),
-    TC(2, 0),
+    TC(2, 1),
     NO_TIMER,
     NO_TIMER);
 #endif
