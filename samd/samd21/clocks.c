@@ -71,7 +71,7 @@ void enable_clock_generator(uint8_t gclk, uint32_t source, uint16_t divisor) {
     uint32_t divsel = 0;
     if (gclk == 2 && divisor > 31) {
         divsel = GCLK_GENCTRL_DIVSEL;
-        for (int i = 15; i > 4; i++) {
+        for (int i = 15; i > 4; i--) {
             if (divisor & (1 << i)) {
                 divisor = i - 1;
                 break;
