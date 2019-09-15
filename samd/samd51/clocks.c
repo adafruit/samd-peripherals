@@ -121,6 +121,7 @@ void clock_init(void) {
     enable_clock_generator_sync(1, GCLK_GENCTRL_SRC_DFLL_Val, 1, false);
     enable_clock_generator_sync(4, GCLK_GENCTRL_SRC_DPLL0_Val, 1, false);
     enable_clock_generator_sync(5, GCLK_GENCTRL_SRC_DFLL_Val, 24, false);
+    enable_clock_generator_sync(6, GCLK_GENCTRL_SRC_DFLL_Val, 4, false);
 
     init_clock_source_dpll0();
 
