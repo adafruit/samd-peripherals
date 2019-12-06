@@ -24,32 +24,19 @@
  * THE SOFTWARE.
  */
 
-#include <string.h>
-#include <stdlib.h>
-
+#include "hal_atomic.h"
 #include "samd/clocks.h"
 
-#include "hal/include/hal_flash.h"
-
-#include "bindings/samd/Clock.h"
-#include "shared-bindings/microcontroller/__init__.h"
-
-#include "py/runtime.h"
-
-#ifdef EXPRESS_BOARD
-#define INTERNAL_CIRCUITPY_CONFIG_START_ADDR (0x00040000 - NVMCTRL_ROW_SIZE - CIRCUITPY_INTERNAL_NVM_SIZE)
-#else
-#define INTERNAL_CIRCUITPY_CONFIG_START_ADDR (0x00040000 - 0x010000 - NVMCTRL_ROW_SIZE - CIRCUITPY_INTERNAL_NVM_SIZE)
-#endif
-
 bool gclk_enabled(uint8_t gclk) {
-    common_hal_mcu_disable_interrupts();
+    volatile hal_atomic_t atomic;
+    atomic_enter_critical(&atomic);
+
     // Explicitly do a byte write so the peripheral knows we're just wanting to read the channel
     // rather than write to it.
     *((uint8_t*) &GCLK->GENCTRL.reg) = gclk;
     while (GCLK->STATUS.bit.SYNCBUSY == 1) {}
     bool enabled = GCLK->GENCTRL.bit.GENEN;
-    common_hal_mcu_enable_interrupts();
+    atomic_leave_critical(&atomic);
     return enabled;
 }
 
@@ -135,7 +122,7 @@ static void init_clock_source_dfll48m_xosc(void) {
     while (!SYSCTRL->PCLKSR.bit.DFLLLCKC || !SYSCTRL->PCLKSR.bit.DFLLLCKF) {}
 }
 
-static void init_clock_source_dfll48m_usb(void) {
+static void init_clock_source_dfll48m_usb(uint32_t fine_calibration) {
     SYSCTRL->DFLLCTRL.reg = SYSCTRL_DFLLCTRL_ENABLE;
     while (!SYSCTRL->PCLKSR.bit.DFLLRDY) {}
     SYSCTRL->DFLLMUL.reg = SYSCTRL_DFLLMUL_CSTEP(1) |
@@ -145,17 +132,8 @@ static void init_clock_source_dfll48m_usb(void) {
     if (coarse == 0x3f) {
         coarse = 0x1f;
     }
-    uint32_t fine = 512;
-    #ifdef CALIBRATE_CRYSTALLESS
-    // This is stored in an NVM page after the text and data storage but before
-    // the optional file system. The first 16 bytes are the identifier for the
-    // section.
-    if (strcmp((char*) INTERNAL_CIRCUITPY_CONFIG_START_ADDR, "CIRCUITPYTHON1") == 0) {
-        fine = ((uint16_t *) INTERNAL_CIRCUITPY_CONFIG_START_ADDR)[8];
-    }
-    #endif
     SYSCTRL->DFLLVAL.reg = SYSCTRL_DFLLVAL_COARSE(coarse) |
-                           SYSCTRL_DFLLVAL_FINE(fine);
+                           SYSCTRL_DFLLVAL_FINE(fine_calibration);
     SYSCTRL->DFLLCTRL.reg = SYSCTRL_DFLLCTRL_CCDIS |
                             SYSCTRL_DFLLCTRL_USBCRM |
                             SYSCTRL_DFLLCTRL_MODE |
@@ -164,25 +142,25 @@ static void init_clock_source_dfll48m_usb(void) {
     while (GCLK->STATUS.bit.SYNCBUSY) {}
 }
 
-void clock_init(void)
+void clock_init(bool has_crystal, uint32_t dfll48m_fine_calibration)
 {
     init_clock_source_osc8m();
-    if (board_has_crystal()) {
+    if (has_crystal) {
         init_clock_source_xosc32k();
     } else {
         init_clock_source_osc32k();
     }
 
-    if (board_has_crystal()) {
+    if (has_crystal) {
         enable_clock_generator(3, GCLK_GENCTRL_SRC_XOSC32K_Val, 1);
         connect_gclk_to_peripheral(3, GCLK_CLKCTRL_ID_DFLL48_Val);
         init_clock_source_dfll48m_xosc();
     } else {
-        init_clock_source_dfll48m_usb();
+        init_clock_source_dfll48m_usb(dfll48m_fine_calibration);
     }
 
     enable_clock_generator(0, GCLK_GENCTRL_SRC_DFLL48M_Val, 1);
-    if (board_has_crystal()) {
+    if (has_crystal) {
         enable_clock_generator(2, GCLK_GENCTRL_SRC_XOSC32K_Val, 32);
     } else {
         enable_clock_generator(2, GCLK_GENCTRL_SRC_OSC32K_Val, 32);
@@ -193,29 +171,32 @@ void clock_init(void)
 }
 
 static bool clk_enabled(uint8_t clk) {
-    common_hal_mcu_disable_interrupts();
+    volatile hal_atomic_t atomic;
+    atomic_enter_critical(&atomic);
     *((uint8_t*) &GCLK->CLKCTRL.reg) = clk;
     while (GCLK->STATUS.bit.SYNCBUSY == 1) {}
     bool enabled = GCLK->CLKCTRL.bit.CLKEN;
-    common_hal_mcu_enable_interrupts();
+    atomic_leave_critical(&atomic);
     return enabled;
 }
 
 static uint8_t clk_get_generator(uint8_t clk) {
-    common_hal_mcu_disable_interrupts();
+    volatile hal_atomic_t atomic;
+    atomic_enter_critical(&atomic);
     *((uint8_t*) &GCLK->CLKCTRL.reg) = clk;
     while (GCLK->STATUS.bit.SYNCBUSY == 1) {}
     uint8_t gen = GCLK->CLKCTRL.bit.GEN;
-    common_hal_mcu_enable_interrupts();
+    atomic_leave_critical(&atomic);
     return gen;
 }
 
 static uint8_t generator_get_source(uint8_t gen) {
-    common_hal_mcu_disable_interrupts();
+    volatile hal_atomic_t atomic;
+    atomic_enter_critical(&atomic);
     *((uint8_t*) &GCLK->GENCTRL.reg) = gen;
     while (GCLK->STATUS.bit.SYNCBUSY == 1) {}
     uint8_t src = GCLK->GENCTRL.bit.SRC;
-    common_hal_mcu_enable_interrupts();
+    atomic_leave_critical(&atomic);
     return src;
 }
 
@@ -295,7 +276,8 @@ uint32_t clock_get_frequency(uint8_t type, uint8_t index) {
 
         uint8_t gen = clk_get_generator(index);
 
-        common_hal_mcu_disable_interrupts();
+        volatile hal_atomic_t atomic;
+        atomic_enter_critical(&atomic);
         *((uint8_t*) &GCLK->GENCTRL.reg) = gen;
         *((uint8_t*) &GCLK->GENDIV.reg) = gen;
         while (GCLK->STATUS.bit.SYNCBUSY == 1) {}
@@ -309,7 +291,7 @@ uint32_t clock_get_frequency(uint8_t type, uint8_t index) {
             if (!div)
                 div = 1;
         }
-        common_hal_mcu_enable_interrupts();
+        atomic_leave_critical(&atomic);
 
         return osc_get_frequency(src) / div;
     }
@@ -364,152 +346,3 @@ int clock_set_calibration(uint8_t type, uint8_t index, uint32_t val) {
     }
     return -2; // calibration is read only
 }
-
-void save_usb_clock_calibration(void) {
-    #ifndef CALIBRATE_CRYSTALLESS
-    return;
-    #endif
-    // If we are on USB lets double check our fine calibration for the clock and
-    // save the new value if its different enough.
-    SYSCTRL->DFLLSYNC.bit.READREQ = 1;
-    uint16_t saved_calibration = 0x1ff;
-    if (strcmp((char*) INTERNAL_CIRCUITPY_CONFIG_START_ADDR, "CIRCUITPYTHON1") == 0) {
-        saved_calibration = ((uint16_t *) INTERNAL_CIRCUITPY_CONFIG_START_ADDR)[8];
-    }
-    while (SYSCTRL->PCLKSR.bit.DFLLRDY == 0) {
-        // TODO(tannewt): Run the mass storage stuff if this takes a while.
-    }
-    int16_t current_calibration = SYSCTRL->DFLLVAL.bit.FINE;
-    if (abs(current_calibration - saved_calibration) > 10) {
-        // Copy the full internal config page to memory.
-        uint8_t page_buffer[NVMCTRL_ROW_SIZE];
-        memcpy(page_buffer, (uint8_t*) INTERNAL_CIRCUITPY_CONFIG_START_ADDR, NVMCTRL_ROW_SIZE);
-
-        // Modify it.
-        memcpy(page_buffer, "CIRCUITPYTHON1", 15);
-        // First 16 bytes (0-15) are ID. Little endian!
-        page_buffer[16] = current_calibration & 0xff;
-        page_buffer[17] = current_calibration >> 8;
-
-        // Write it back.
-        // We don't use features that use any advanced NVMCTRL features so we can fake the descriptor
-        // whenever we need it instead of storing it long term.
-        struct flash_descriptor desc;
-        desc.dev.hw = NVMCTRL;
-        flash_write(&desc, (uint32_t) INTERNAL_CIRCUITPY_CONFIG_START_ADDR, page_buffer, NVMCTRL_ROW_SIZE);
-    }
-}
-
-#ifdef SAMD21_EXPOSE_ALL_CLOCKS
-CLOCK_SOURCE(XOSC);
-CLOCK_SOURCE(GCLKIN);
-CLOCK_SOURCE(GCLKGEN1);
-CLOCK_SOURCE(OSCULP32K);
-#endif
-CLOCK_SOURCE(OSC32K);
-CLOCK_SOURCE(XOSC32K);
-#ifdef SAMD21_EXPOSE_ALL_CLOCKS
-CLOCK_SOURCE(OSC8M);
-CLOCK_SOURCE(DFLL48M);
-CLOCK_SOURCE(DPLL96M);
-
-CLOCK_GCLK_(SYSCTRL, DFLL48);
-CLOCK_GCLK_(SYSCTRL, FDPLL);
-CLOCK_GCLK_(SYSCTRL, FDPLL32K);
-CLOCK_GCLK(WDT);
-#endif
-CLOCK_GCLK(RTC);
-#ifdef SAMD21_EXPOSE_ALL_CLOCKS
-CLOCK_GCLK(EIC);
-CLOCK_GCLK(USB);
-CLOCK_GCLK_(EVSYS, 0);
-CLOCK_GCLK_(EVSYS, 1);
-CLOCK_GCLK_(EVSYS, 2);
-CLOCK_GCLK_(EVSYS, 3);
-CLOCK_GCLK_(EVSYS, 4);
-CLOCK_GCLK_(EVSYS, 5);
-CLOCK_GCLK_(EVSYS, 6);
-CLOCK_GCLK_(EVSYS, 7);
-CLOCK_GCLK_(EVSYS, 8);
-CLOCK_GCLK_(EVSYS, 9);
-CLOCK_GCLK_(EVSYS, 10);
-CLOCK_GCLK_(EVSYS, 11);
-CLOCK(SERCOMx_SLOW, 1, 19);
-CLOCK_GCLK_(SERCOM0, CORE);
-CLOCK_GCLK_(SERCOM1, CORE);
-CLOCK_GCLK_(SERCOM2, CORE);
-CLOCK_GCLK_(SERCOM3, CORE);
-CLOCK_GCLK_(SERCOM4, CORE);
-CLOCK_GCLK_(SERCOM5, CORE);
-CLOCK(TCC0_TCC1, 1, 26);
-CLOCK(TCC2_TCC3, 1, 27);
-CLOCK(TC4_TC5, 1, 28);
-CLOCK(TC6_TC7, 1, 29);
-CLOCK_GCLK(ADC);
-CLOCK_GCLK_(AC, DIG);
-CLOCK_GCLK_(AC, ANA);
-CLOCK_GCLK(DAC);
-CLOCK_GCLK(PTC);
-CLOCK_GCLK_(I2S, 0);
-CLOCK_GCLK_(I2S, 1);
-
-CLOCK(SYSTICK, 2, 0);
-#endif
-
-STATIC const mp_rom_map_elem_t samd_clock_global_dict_table[] = {
-#ifdef SAMD21_EXPOSE_ALL_CLOCKS
-    CLOCK_ENTRY(XOSC),
-    CLOCK_ENTRY(GCLKIN),
-    CLOCK_ENTRY(GCLKGEN1),
-    CLOCK_ENTRY(OSCULP32K),
-#endif
-    CLOCK_ENTRY(OSC32K),
-    CLOCK_ENTRY(XOSC32K),
-#ifdef SAMD21_EXPOSE_ALL_CLOCKS
-    CLOCK_ENTRY(OSC8M),
-    CLOCK_ENTRY(DFLL48M),
-    CLOCK_ENTRY(DPLL96M),
-    CLOCK_ENTRY_(SYSCTRL, DFLL48),
-    CLOCK_ENTRY_(SYSCTRL, FDPLL),
-    CLOCK_ENTRY_(SYSCTRL, FDPLL32K),
-    CLOCK_ENTRY(WDT),
-#endif
-    CLOCK_ENTRY(RTC),
-#ifdef SAMD21_EXPOSE_ALL_CLOCKS
-    CLOCK_ENTRY(EIC),
-    CLOCK_ENTRY(USB),
-    CLOCK_ENTRY_(EVSYS, 0),
-    CLOCK_ENTRY_(EVSYS, 1),
-    CLOCK_ENTRY_(EVSYS, 2),
-    CLOCK_ENTRY_(EVSYS, 3),
-    CLOCK_ENTRY_(EVSYS, 4),
-    CLOCK_ENTRY_(EVSYS, 5),
-    CLOCK_ENTRY_(EVSYS, 6),
-    CLOCK_ENTRY_(EVSYS, 7),
-    CLOCK_ENTRY_(EVSYS, 8),
-    CLOCK_ENTRY_(EVSYS, 9),
-    CLOCK_ENTRY_(EVSYS, 10),
-    CLOCK_ENTRY_(EVSYS, 11),
-    CLOCK_ENTRY(SERCOMx_SLOW),
-    CLOCK_ENTRY_(SERCOM0, CORE),
-    CLOCK_ENTRY_(SERCOM1, CORE),
-    CLOCK_ENTRY_(SERCOM2, CORE),
-    CLOCK_ENTRY_(SERCOM3, CORE),
-    CLOCK_ENTRY_(SERCOM4, CORE),
-    CLOCK_ENTRY_(SERCOM5, CORE),
-    CLOCK_ENTRY(TCC0_TCC1),
-    CLOCK_ENTRY(TCC2_TCC3),
-    CLOCK_ENTRY(TC4_TC5),
-    CLOCK_ENTRY(TC6_TC7),
-    CLOCK_ENTRY(ADC),
-    CLOCK_ENTRY_(AC, DIG),
-    CLOCK_ENTRY_(AC, ANA),
-    CLOCK_ENTRY(DAC),
-    CLOCK_ENTRY(PTC),
-    CLOCK_ENTRY_(I2S, 0),
-    CLOCK_ENTRY_(I2S, 1),
-
-    CLOCK_ENTRY(SYSTICK),
-#endif
-};
-MP_DEFINE_CONST_DICT(samd_clock_globals, samd_clock_global_dict_table);
