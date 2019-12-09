@@ -31,7 +31,6 @@
 #include <stdint.h>
 
 #include "include/sam.h"
-#include "mpconfigboard.h" // for BOARD_HAS_CRYSTAL
 
 #ifdef SAMD51
 #define CLOCK_48MHZ GCLK_GENCTRL_SRC_DFLL_Val
@@ -39,6 +38,9 @@
 #ifdef SAMD21
 #define CLOCK_48MHZ GCLK_GENCTRL_SRC_DFLL48M_Val
 #endif
+
+// Pass to clock_init() if fine calibration not known.
+#define DEFAULT_DFLL48M_FINE_CALIBRATION 512
 
 #define CORE_GCLK 0
 
@@ -54,15 +56,7 @@ void disconnect_gclk_from_peripheral(uint8_t gclk, uint8_t peripheral);
 void enable_clock_generator(uint8_t gclk, uint32_t source, uint16_t divisor);
 void disable_clock_generator(uint8_t gclk);
 
-static inline bool board_has_crystal(void) {
-#ifdef BOARD_HAS_CRYSTAL
-    return BOARD_HAS_CRYSTAL == 1;
-#else
-    return false;
-#endif
-}
-
-void clock_init(void);
+void clock_init(bool has_crystal, uint32_t dfll48m_fine_calibration);
 void init_dynamic_clocks(void);
 
 bool clock_get_enabled(uint8_t type, uint8_t index);
@@ -70,6 +64,5 @@ bool clock_get_parent(uint8_t type, uint8_t index, uint8_t *p_type, uint8_t *p_i
 uint32_t clock_get_frequency(uint8_t type, uint8_t index);
 uint32_t clock_get_calibration(uint8_t type, uint8_t index);
 int clock_set_calibration(uint8_t type, uint8_t index, uint32_t val);
-void save_usb_clock_calibration(void);
 
 #endif  // MICROPY_INCLUDED_ATMEL_SAMD_CLOCKS_H
