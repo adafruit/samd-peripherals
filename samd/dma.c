@@ -183,6 +183,34 @@ static int32_t shared_dma_transfer(void* peripheral,
         #pragma GCC diagnostic pop
     }
 
+    #ifdef SAMD51
+    // Sometimes (silicon bug?) this DMA transfer never starts, and another channel sits with
+    // CHSTATUS.reg = 0x3 (BUSY | PENDING).  On the other hand, this is a
+    // legitimate state for a DMA channel to be in (apparently), so we can't use that alone as a check.
+    // Instead, let's look at the ACTIVE flag.  When DMA is hung, everything in ACTIVE is zeros.
+    bool is_okay = false;
+    for (int i=0; i<10 && !is_okay; i++) {
+        bool complete = true;
+        if (rx_active) {
+            if (DMAC->Channel[SHARED_RX_CHANNEL].CHSTATUS.reg & 0x3)
+                complete = false;
+        }
+        if (tx_active) {
+            if (DMAC->Channel[SHARED_TX_CHANNEL].CHSTATUS.reg & 0x3)
+                complete = false;
+        }
+        is_okay = is_okay || (DMAC->ACTIVE.bit.ABUSY || complete);
+    }
+    if (!is_okay) {
+        for (int i=0; i<AUDIO_DMA_CHANNEL_COUNT; i++) {
+            if(DMAC->Channel[i].CHCTRLA.bit.ENABLE) {
+                DMAC->Channel[i].CHCTRLA.bit.ENABLE = 0;
+                DMAC->Channel[i].CHCTRLA.bit.ENABLE = 1;
+            }
+        }
+    }
+    #endif
+
     // Channels cycle between Suspend -> Pending -> Busy and back while transfering. So, we check
     // the channels transfer status for an error or completion.
     // (However, the flags being checked here are actually CHINTFLAG "complete" and "error")
