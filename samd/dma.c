@@ -185,6 +185,7 @@ static int32_t shared_dma_transfer(void* peripheral,
 
     // Channels cycle between Suspend -> Pending -> Busy and back while transfering. So, we check
     // the channels transfer status for an error or completion.
+    // (However, the flags being checked here are actually CHINTFLAG "complete" and "error")
     if (rx_active) {
         while ((dma_transfer_status(SHARED_RX_CHANNEL) & 0x3) == 0) {}
     }
