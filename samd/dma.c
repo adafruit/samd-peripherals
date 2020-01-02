@@ -110,7 +110,6 @@ static int32_t shared_dma_transfer(void* peripheral,
     } else {
     #endif
 
-        // sercom index is incorrect for SAMD51
         dma_configure(SHARED_TX_CHANNEL, sercom_index(peripheral) * 2 + FIRST_SERCOM_TX_TRIGSRC, false);
         tx_active = true;
         if (buffer_in != NULL) {
@@ -155,8 +154,6 @@ static int32_t shared_dma_transfer(void* peripheral,
     if (sercom) {
         SercomSpi *s = &((Sercom*) peripheral)->SPI;
         s->INTFLAG.reg = SERCOM_SPI_INTFLAG_RXC | SERCOM_SPI_INTFLAG_DRE;
-    } else {
-        //QSPI->INTFLAG.reg = QSPI_INTFLAG_RXC | QSPI_INTFLAG_DRE;
     }
     // Start the RX job first so we don't miss the first byte. The TX job clocks
     // the output.
@@ -168,23 +165,41 @@ static int32_t shared_dma_transfer(void* peripheral,
     }
 
 
-    if (sercom) {
-        //DMAC->SWTRIGCTRL.reg |= (1 << SHARED_TX_CHANNEL);
-    } else {
-        // Do a manual copy to trigger then DMA. We do 32-bit accesses to match the DMA.
-        #pragma GCC diagnostic push
-        #pragma GCC diagnostic ignored "-Wcast-align"
+    if (!sercom) {
         if (rx_active) {
-            //buffer_in[0] = *src;
             DMAC->SWTRIGCTRL.reg |= (1 << SHARED_RX_CHANNEL);
-        } else {
-            //*(uint32_t*)dest = ((uint32_t*) buffer_out)[0];
         }
-        #pragma GCC diagnostic pop
     }
 
-    // Channels cycle between Suspend -> Pending -> Busy and back while transfering. So, we check
-    // the channels transfer status for an error or completion.
+    #ifdef SAMD51
+    // Sometimes (silicon bug?) this DMA transfer never starts, and another channel sits with
+    // CHSTATUS.reg = 0x3 (BUSY | PENDING).  On the other hand, this is a
+    // legitimate state for a DMA channel to be in (apparently), so we can't use that alone as a check.
+    // Instead, let's look at the ACTIVE flag.  When DMA is hung, everything in ACTIVE is zeros.
+    bool is_okay = false;
+    for (int i=0; i<10 && !is_okay; i++) {
+        bool complete = true;
+        if (rx_active) {
+            if (DMAC->Channel[SHARED_RX_CHANNEL].CHSTATUS.reg & 0x3)
+                complete = false;
+        }
+        if (tx_active) {
+            if (DMAC->Channel[SHARED_TX_CHANNEL].CHSTATUS.reg & 0x3)
+                complete = false;
+        }
+        is_okay = is_okay || (DMAC->ACTIVE.bit.ABUSY || complete);
+    }
+    if (!is_okay) {
+        for (int i=0; i<AUDIO_DMA_CHANNEL_COUNT; i++) {
+            if(DMAC->Channel[i].CHCTRLA.bit.ENABLE) {
+                DMAC->Channel[i].CHCTRLA.bit.ENABLE = 0;
+                DMAC->Channel[i].CHCTRLA.bit.ENABLE = 1;
+            }
+        }
+    }
+    #endif
+
+    // busy-wait for the RX and TX DMAs to either complete or encounter an error
     if (rx_active) {
         while ((dma_transfer_status(SHARED_RX_CHANNEL) & 0x3) == 0) {}
     }
