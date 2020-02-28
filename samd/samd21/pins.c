@@ -496,13 +496,13 @@ PIN(PB00, EXTINT_CHANNEL(0), ADC_INPUT(8), TOUCH(6),
 #if defined(PIN_PB01) && !defined(IGNORE_PIN_PB01)
 PIN(PB01, EXTINT_CHANNEL(1), ADC_INPUT(9), TOUCH(7),
     NO_SERCOM,
-    SERCOM(5, 3)),
+    SERCOM(5, 3),
     #ifdef TC7
     TC(7, 1),
     #else
     NO_TIMER,
     #endif
-    NO_TIMER;
+    NO_TIMER);
 #endif
 #if defined(PIN_PB02) && !defined(IGNORE_PIN_PB02)
 PIN(PB02, EXTINT_CHANNEL(2), ADC_INPUT(10), TOUCH(8),
