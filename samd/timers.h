@@ -26,6 +26,7 @@
 #ifndef MICROPY_INCLUDED_ATMEL_SAMD_TIMERS_H
 #define MICROPY_INCLUDED_ATMEL_SAMD_TIMERS_H
 
+#include <stdbool.h>
 #include "include/sam.h"
 
 const uint16_t prescaler[8];
