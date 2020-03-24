@@ -76,13 +76,13 @@ void disable_clock_generator(uint8_t gclk) {
 
 static void init_clock_source_osculp32k(void) {
     // Calibration value is loaded at startup
-    OSC32KCTRL->OSCULP32K.bit.EN1K = 1;
-    OSC32KCTRL->OSCULP32K.bit.EN32K = 0;
+    OSC32KCTRL->OSCULP32K.bit.EN1K = 0;
+    OSC32KCTRL->OSCULP32K.bit.EN32K = 1;
 }
 
 static void init_clock_source_xosc32k(void) {
     OSC32KCTRL->XOSC32K.reg = OSC32KCTRL_XOSC32K_ONDEMAND |
-                              OSC32KCTRL_XOSC32K_EN1K |
+                              OSC32KCTRL_XOSC32K_EN32K |
                               OSC32KCTRL_XOSC32K_XTALEN |
                               OSC32KCTRL_XOSC32K_ENABLE |
                               OSC32KCTRL_XOSC32K_CGM(1);
@@ -106,9 +106,9 @@ void clock_init(bool has_crystal, uint32_t dfll48m_fine_calibration) {
 
     if (has_crystal) {
         init_clock_source_xosc32k();
-        OSC32KCTRL->RTCCTRL.bit.RTCSEL = OSC32KCTRL_RTCCTRL_RTCSEL_XOSC1K_Val;
+        OSC32KCTRL->RTCCTRL.bit.RTCSEL = OSC32KCTRL_RTCCTRL_RTCSEL_XOSC32K_Val;
     } else {
-        OSC32KCTRL->RTCCTRL.bit.RTCSEL = OSC32KCTRL_RTCCTRL_RTCSEL_ULP1K_Val;
+        OSC32KCTRL->RTCCTRL.bit.RTCSEL = OSC32KCTRL_RTCCTRL_RTCSEL_ULP32K_Val;
     }
 
     MCLK->CPUDIV.reg = MCLK_CPUDIV_DIV(1);

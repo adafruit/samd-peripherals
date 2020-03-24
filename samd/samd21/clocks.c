@@ -161,9 +161,9 @@ void clock_init(bool has_crystal, uint32_t dfll48m_fine_calibration)
 
     enable_clock_generator(0, GCLK_GENCTRL_SRC_DFLL48M_Val, 1);
     if (has_crystal) {
-        enable_clock_generator(2, GCLK_GENCTRL_SRC_XOSC32K_Val, 32);
+        enable_clock_generator(2, GCLK_GENCTRL_SRC_XOSC32K_Val, 1);
     } else {
-        enable_clock_generator(2, GCLK_GENCTRL_SRC_OSC32K_Val, 32);
+        enable_clock_generator(2, GCLK_GENCTRL_SRC_OSC32K_Val, 1);
     }
 
     // Do this after all static clock init so that they aren't used dynamically.
