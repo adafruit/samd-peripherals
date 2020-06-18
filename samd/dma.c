@@ -43,14 +43,14 @@ COMPILER_ALIGNED(16) static DmacDescriptor write_back_descriptors[DMA_CHANNEL_CO
 #define FIRST_SERCOM_RX_TRIGSRC 0x01
 #define FIRST_SERCOM_TX_TRIGSRC 0x02
 #endif
-#ifdef SAMD51
+#ifdef SAM_D5X_E5X
 #define FIRST_SERCOM_RX_TRIGSRC 0x04
 #define FIRST_SERCOM_TX_TRIGSRC 0x05
 #endif
 
 void init_shared_dma(void) {
     // Turn on the clocks
-    #ifdef SAMD51
+    #ifdef SAM_D5X_E5X
     MCLK->AHBMASK.reg |= MCLK_AHBMASK_DMAC;
     #endif
 
@@ -89,7 +89,7 @@ static int32_t shared_dma_transfer(void* peripheral,
     bool tx_active = false;
     bool rx_active = false;
     uint16_t beat_length = length;
-    #ifdef SAMD51
+    #ifdef SAM_D5X_E5X
     if (peripheral == QSPI) {
         // Check input alignment on word boundaries.
         if ((((uint32_t) buffer_in) & 0x3) != 0 ||
@@ -117,7 +117,7 @@ static int32_t shared_dma_transfer(void* peripheral,
             rx_active = true;
         }
 
-    #ifdef SAMD51
+    #ifdef SAM_D5X_E5X
     }
     #endif
 
@@ -127,7 +127,7 @@ static int32_t shared_dma_transfer(void* peripheral,
         rx_descriptor->BTCTRL.reg = beat_size | DMAC_BTCTRL_DSTINC;
         rx_descriptor->BTCNT.reg = beat_length;
         rx_descriptor->SRCADDR.reg = ((uint32_t) src);
-        #ifdef SAMD51
+        #ifdef SAM_D5X_E5X
         if (peripheral == QSPI) {
             rx_descriptor->SRCADDR.reg = ((uint32_t) src + length);
         }
@@ -171,7 +171,7 @@ static int32_t shared_dma_transfer(void* peripheral,
         }
     }
 
-    #ifdef SAMD51
+    #ifdef SAM_D5X_E5X
     // Sometimes (silicon bug?) this DMA transfer never starts, and another channel sits with
     // CHSTATUS.reg = 0x3 (BUSY | PENDING).  On the other hand, this is a
     // legitimate state for a DMA channel to be in (apparently), so we can't use that alone as a check.
@@ -244,7 +244,7 @@ int32_t sercom_dma_read(Sercom* sercom, uint8_t* buffer, uint32_t length, uint8_
     return shared_dma_transfer(sercom, NULL, &sercom->SPI.DATA.reg, &sercom->SPI.DATA.reg, buffer, length, tx);
 }
 
-#ifdef SAMD51
+#ifdef SAM_D5X_E5X
 int32_t qspi_dma_write(uint32_t address, const uint8_t* buffer, uint32_t length) {
     return shared_dma_transfer(QSPI, buffer, (uint32_t*) (QSPI_AHB + address), NULL, NULL, length, 0);
 }

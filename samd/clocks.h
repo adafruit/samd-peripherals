@@ -32,7 +32,7 @@
 
 #include "include/sam.h"
 
-#ifdef SAMD51
+#ifdef SAM_D5X_E5X
 #define CLOCK_48MHZ GCLK_GENCTRL_SRC_DFLL_Val
 #endif
 #ifdef SAMD21

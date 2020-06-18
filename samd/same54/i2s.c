@@ -23,51 +23,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef MICROPY_INCLUDED_ATMEL_SAMD_TIMERS_H
-#define MICROPY_INCLUDED_ATMEL_SAMD_TIMERS_H
 
-#include <stdbool.h>
-#include "include/sam.h"
+#include "samd/i2s.h"
 
-const uint16_t prescaler[8];
+#include "samd/clocks.h"
 
-#ifdef SAMD21
-const uint8_t tcc_cc_num[3];
-const uint8_t tc_gclk_ids[TC_INST_NUM];
-const uint8_t tcc_gclk_ids[3];
-#endif
-#ifdef SAM_D5X_E5X
-const uint8_t tcc_cc_num[5];
-const uint8_t tc_gclk_ids[TC_INST_NUM];
-const uint8_t tcc_gclk_ids[TCC_INST_NUM];
-#endif
-Tc* const tc_insts[TC_INST_NUM];
-Tcc* const tcc_insts[TCC_INST_NUM];
+#include "hpl/gclk/hpl_gclk_base.h"
 
-void turn_on_clocks(bool is_tc, uint8_t index, uint32_t gclk_index);
-void tc_set_enable(Tc* tc, bool enable);
-void tcc_set_enable(Tcc* tcc, bool enable);
-void tc_wait_for_sync(Tc* tc);
-void tc_reset(Tc* tc);
-uint8_t find_free_timer(void);
+void turn_on_i2s(void) {
+    // Make sure the I2S peripheral is running so we can see if the resources we need are free.
+    hri_mclk_set_APBDMASK_I2S_bit(MCLK);
 
-void tc_enable_interrupts(uint8_t tc_index);
-void tc_disable_interrupts(uint8_t tc_index);
+    // Connect the clock units to the 2mhz clock by default. They can't reset without it.
+    connect_gclk_to_peripheral(5, I2S_GCLK_ID_0);
+    connect_gclk_to_peripheral(5, I2S_GCLK_ID_1);
+}
 
-extern void shared_timer_handler(bool is_tc, uint8_t index);
-
-// Handlers
-void TCC0_Handler(void);
-void TCC1_Handler(void);
-void TCC2_Handler(void);
-void TC3_Handler(void);
-void TC4_Handler(void);
-void TC5_Handler(void);
-#ifdef TC6
-void TC6_Handler(void);
-#endif
-#ifdef TC7
-void TC7_Handler(void);
-#endif
-
-#endif  // MICROPY_INCLUDED_ATMEL_SAMD_TIMERS_H
+void i2s_set_serializer_enable(uint8_t serializer, bool enable) {
+    if (serializer == 0) {
+        while (I2S->SYNCBUSY.bit.TXEN == 1) {}
+        I2S->CTRLA.bit.TXEN = enable;
+        while (I2S->SYNCBUSY.bit.TXEN == 1) {}
+    } else {
+        while (I2S->SYNCBUSY.bit.RXEN == 1) {}
+        I2S->CTRLA.bit.RXEN = enable;
+        while (I2S->SYNCBUSY.bit.RXEN == 1) {}
+    }
+}
