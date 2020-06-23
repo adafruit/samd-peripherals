@@ -30,7 +30,7 @@
 
 #include "py/runtime.h"
 
-#include "hri/hri_mclk_e54.h"
+#include "hri_mclk.h"
 
 void turn_on_event_system(void) {
     hri_mclk_set_APBBMASK_EVSYS_bit(MCLK);

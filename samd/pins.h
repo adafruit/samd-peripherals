@@ -74,7 +74,7 @@ typedef struct {
 #include "samd/samd21/pins.h"
 #endif
 #ifdef SAM_D5X_E5X
-#include "samd/samd51/pins.h"
+#include "samd/sam_d5x_e5x/pins.h"
 #endif
 
 #endif // MICROPY_INCLUDED_ATMEL_SAMD_PERIPHERALS_PINS_H

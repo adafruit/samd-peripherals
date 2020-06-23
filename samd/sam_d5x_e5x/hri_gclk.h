@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2017 Dan Halbert for Adafruit Industries
+ * Copyright (c) 2020 Jeff Epler for Adafruit Industries
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,16 +24,13 @@
  * THE SOFTWARE.
  */
 
-#include "sam.h"
+#ifndef MICROPY_INCLUDED_ATMEL_SAMD_HRI_GCLK_H
+#define MICROPY_INCLUDED_ATMEL_SAMD_HRI_GCLK_H
 
-// Turn off cache and invalidate all data in it.
-void samd_peripherals_disable_and_clear_cache(void) {
-    CMCC->CTRL.bit.CEN = 0;
-    while (CMCC->SR.bit.CSTS) {}
-    CMCC->MAINT0.bit.INVALL = 1;
-}
+#ifdef SAMD51
+#include "hri/hri_gclk_d51.h"
+#else
+#include "hri/hri_gclk_e54.h"
+#endif
 
-// Enable cache
-void samd_peripherals_enable_cache(void) {
-    CMCC->CTRL.bit.CEN = 1;
-}
+#endif

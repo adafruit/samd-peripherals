@@ -1,9 +1,9 @@
 /*
- * This file is part of the MicroPython project, http://micropython.org/
+ * This file is part of the Micro Python project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2018 Scott Shawcroft for Adafruit Industries
+ * Copyright (c) 2020 Jeff Epler for Adafruit Industries
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,29 +24,13 @@
  * THE SOFTWARE.
  */
 
-#include "samd/i2s.h"
+#ifndef MICROPY_INCLUDED_ATMEL_SAMD_HRI_MCLK_H
+#define MICROPY_INCLUDED_ATMEL_SAMD_HRI_MCLK_H
 
-#include "samd/clocks.h"
+#ifdef SAMD51
+#include "hri/hri_mclk_d51.h"
+#else
+#include "hri/hri_mclk_e54.h"
+#endif
 
-#include "hpl/gclk/hpl_gclk_base.h"
-
-void turn_on_i2s(void) {
-    // Make sure the I2S peripheral is running so we can see if the resources we need are free.
-    hri_mclk_set_APBDMASK_I2S_bit(MCLK);
-
-    // Connect the clock units to the 2mhz clock by default. They can't reset without it.
-    connect_gclk_to_peripheral(5, I2S_GCLK_ID_0);
-    connect_gclk_to_peripheral(5, I2S_GCLK_ID_1);
-}
-
-void i2s_set_serializer_enable(uint8_t serializer, bool enable) {
-    if (serializer == 0) {
-        while (I2S->SYNCBUSY.bit.TXEN == 1) {}
-        I2S->CTRLA.bit.TXEN = enable;
-        while (I2S->SYNCBUSY.bit.TXEN == 1) {}
-    } else {
-        while (I2S->SYNCBUSY.bit.RXEN == 1) {}
-        I2S->CTRLA.bit.RXEN = enable;
-        while (I2S->SYNCBUSY.bit.RXEN == 1) {}
-    }
-}
+#endif
