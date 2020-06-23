@@ -31,7 +31,7 @@
 
 #include "timer_handler.h"
 
-#include "hri/hri_gclk_d51.h"
+#include "hri_gclk.h"
 
 const uint8_t tcc_cc_num[5] = {6, 4, 3, 2, 2};
 const uint8_t tc_gclk_ids[TC_INST_NUM] = {TC0_GCLK_ID,

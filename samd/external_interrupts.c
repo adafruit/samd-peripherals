@@ -44,14 +44,14 @@ void external_interrupt_handler(uint8_t channel) {
 void configure_eic_channel(uint8_t eic_channel, uint32_t sense_setting) {
     uint8_t config_index = eic_channel / 8;
     uint8_t position = (eic_channel % 8) * 4;
-    #ifdef SAMD51
+    #ifdef SAM_D5X_E5X
     eic_set_enable(false);
     #endif
     common_hal_mcu_disable_interrupts();
     uint32_t masked_value = EIC->CONFIG[config_index].reg & ~(0xf << position);
     EIC->CONFIG[config_index].reg = masked_value | (sense_setting << position);
     common_hal_mcu_enable_interrupts();
-    #ifdef SAMD51
+    #ifdef SAM_D5X_E5X
     eic_set_enable(true);
     #endif
 }
@@ -68,7 +68,7 @@ void turn_on_eic_channel(uint8_t eic_channel, uint32_t sense_setting) {
 void turn_off_eic_channel(uint8_t eic_channel) {
     uint32_t mask = 1 << eic_channel;
     EIC->INTENCLR.reg = mask << EIC_INTENSET_EXTINT_Pos;
-    #ifdef SAMD51
+    #ifdef SAM_D5X_E5X
     NVIC_DisableIRQ(EIC_0_IRQn + eic_channel);
     NVIC_ClearPendingIRQ(EIC_0_IRQn + eic_channel);
     #endif

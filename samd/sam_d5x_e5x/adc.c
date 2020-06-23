@@ -26,7 +26,7 @@
 
 #include "hal/include/hal_adc_sync.h"
 #include "hpl/gclk/hpl_gclk_base.h"
-#include "hri/hri_mclk_d51.h"
+#include "hri_mclk.h"
 
 // Do initialization and calibration setup needed for any use of the ADC.
 // The reference and resolution should be set by the caller.

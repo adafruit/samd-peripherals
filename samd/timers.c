@@ -95,7 +95,7 @@ void tc_reset(Tc* tc) {
     }
 }
 
-#ifdef SAMD51
+#ifdef SAM_D5X_E5X
 #define TC_OFFSET 0
 #endif
 #ifdef SAMD21
@@ -111,7 +111,7 @@ void TCC1_Handler(void) {
 void TCC2_Handler(void) {
     shared_timer_handler(false, 2);
 }
-// TC0 - TC2 only exist on the SAMD51
+// TC0 - TC2 only exist on the SAM_D5X_E5X
 #ifdef TC0
 void TC0_Handler(void) {
     shared_timer_handler(true, 0);

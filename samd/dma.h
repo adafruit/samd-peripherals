@@ -44,7 +44,7 @@ volatile bool audio_dma_in_use;
 
 void init_shared_dma(void);
 
-#ifdef SAMD51
+#ifdef SAM_D5X_E5X
 int32_t qspi_dma_write(uint32_t address, const uint8_t* buffer, uint32_t length);
 int32_t qspi_dma_read(uint32_t address, uint8_t* buffer, uint32_t length);
 #endif

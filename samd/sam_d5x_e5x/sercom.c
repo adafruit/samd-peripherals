@@ -26,7 +26,7 @@
 
 #include "hal/include/hal_adc_sync.h"
 #include "hpl/gclk/hpl_gclk_base.h"
-#include "hri/hri_mclk_d51.h"
+#include "hri_mclk.h"
 
 // The clock initializer values are rather random, so we need to put them in
 // tables for lookup. We can't compute them.
