@@ -40,8 +40,6 @@
 #define SHARED_TX_CHANNEL (DMA_CHANNEL_COUNT - 2)
 #define SHARED_RX_CHANNEL (DMA_CHANNEL_COUNT - 1)
 
-volatile bool audio_dma_in_use;
-
 void init_shared_dma(void);
 
 #ifdef SAM_D5X_E5X
