@@ -38,6 +38,6 @@ uint8_t samd_peripherals_spi_baudrate_to_baud_reg_value(const uint32_t baudrate)
 uint32_t samd_peripherals_spi_baud_reg_value_to_baudrate(const uint8_t baud_reg_value);
 bool samd_peripherals_valid_spi_clock_pad(uint8_t clock_pad);
 
-Sercom* sercom_insts[SERCOM_INST_NUM];
+extern Sercom* sercom_insts[SERCOM_INST_NUM];
 
 #endif // MICROPY_INCLUDED_ATMEL_SAMD_PERIPHERALS_SPI_H
