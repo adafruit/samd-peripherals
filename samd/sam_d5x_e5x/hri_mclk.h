@@ -27,10 +27,15 @@
 #ifndef MICROPY_INCLUDED_ATMEL_SAMD_HRI_MCLK_H
 #define MICROPY_INCLUDED_ATMEL_SAMD_HRI_MCLK_H
 
-#ifdef SAMD51
+#if defined(SAMD51)
 #include "hri/hri_mclk_d51.h"
-#else
+#elif defined(SAME51)
+#include "hri/hri_mclk_e51.h"
+#elif defined(SAME54)
+#include "sam.h"
 #include "hri/hri_mclk_e54.h"
+#else
+#error Unknown chip family
 #endif
 
 #endif
