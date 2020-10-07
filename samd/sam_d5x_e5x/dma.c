@@ -76,6 +76,7 @@ void dma_suspend_channel(uint8_t channel_number) {
 void dma_resume_channel(uint8_t channel_number) {
     DmacChannel* channel = &DMAC->Channel[channel_number];
     channel->CHCTRLB.reg = DMAC_CHCTRLB_CMD_RESUME;
+    channel->CHINTFLAG.reg = DMAC_CHINTFLAG_SUSP;
 }
 
 bool dma_channel_enabled(uint8_t channel_number) {
