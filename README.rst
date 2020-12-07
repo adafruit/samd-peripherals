@@ -2,7 +2,7 @@ Introduction
 ============
 
 .. image:: https://img.shields.io/discord/327254708534116352.svg
-    :target: https://discord.gg/nBQh6qu
+    :target: https://adafru.it/discord
     :alt: Discord
 
 .. image:: https://travis-ci.org/adafruit/samd-peripherals.svg?branch=master
