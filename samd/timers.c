@@ -89,9 +89,10 @@ void tcc_set_enable(Tcc* tcc, bool enable) {
     }
 }
 
-void tc_reset(Tc* tc) {
-    tc->COUNT16.CTRLA.bit.SWRST = 1;
-    while (tc->COUNT16.CTRLA.bit.SWRST == 1) {
+void tcc_reset(Tcc* tcc) {
+    tcc->CTRLA.bit.SWRST = true;
+    while (tcc->SYNCBUSY.bit.SWRST != 0) {
+        /* Wait for sync */
     }
 }
 

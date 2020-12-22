@@ -49,6 +49,7 @@ void tc_set_enable(Tc* tc, bool enable);
 void tcc_set_enable(Tcc* tcc, bool enable);
 void tc_wait_for_sync(Tc* tc);
 void tc_reset(Tc* tc);
+void tcc_reset(Tcc* tcc);
 uint8_t find_free_timer(void);
 
 void tc_enable_interrupts(uint8_t tc_index);

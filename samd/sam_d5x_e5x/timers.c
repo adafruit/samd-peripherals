@@ -134,6 +134,11 @@ void tc_set_enable(Tc* tc, bool enable) {
     }
 }
 
+void tc_reset(Tc* tc) {
+    tc->COUNT16.CTRLA.bit.SWRST = 1;
+    while (tc->COUNT16.SYNCBUSY.bit.SWRST != 0) {}
+}
+
 void tc_wait_for_sync(Tc* tc) {
     while (tc->COUNT16.SYNCBUSY.reg != 0) {}
 }
