@@ -62,5 +62,6 @@ bool dma_channel_free(uint8_t channel_number);
 bool dma_channel_enabled(uint8_t channel_number);
 uint8_t dma_transfer_status(uint8_t channel_number);
 DmacDescriptor* dma_descriptor(uint8_t channel_number);
+DmacDescriptor* dma_write_back_descriptor(uint8_t channel_number);
 
 #endif  // MICROPY_INCLUDED_ATMEL_SAMD_PERIPHERALS_DMA_H
