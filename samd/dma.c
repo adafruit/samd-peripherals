@@ -257,3 +257,7 @@ int32_t qspi_dma_read(uint32_t address, uint8_t* buffer, uint32_t length) {
 DmacDescriptor* dma_descriptor(uint8_t channel_number) {
     return &dma_descriptors[channel_number];
 }
+
+DmacDescriptor* dma_write_back_descriptor(uint8_t channel_number) {
+    return &write_back_descriptors[channel_number];
+}
