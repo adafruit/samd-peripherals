@@ -18,12 +18,17 @@ and will be strengthened as other people use it.
 Using
 ======
 First, add the samd-peripherals repo as a submodule within your own. For example:
-`git submodule add https://github.com/adafruit/samd-peripherals.git peripherals`
+
+.. code-block::
+
+    git submodule add https://github.com/adafruit/samd-peripherals.git peripherals
 
 This will place the files from the repo in a peripherals directory. When your repo is checked out
 or updated from before people will need to:
 
-`git submodule update --init --recursive`
+.. code-block::
+
+    git submodule update --init --recursive
 
 The header files in `samd` define the common API between the two series. Logic with most code shared
 lives in a corresponding .c file. Functions with mostly different implementations are in a .c file
@@ -31,22 +36,24 @@ of the same name under the series specific directory, such as `samd21`. Includes
 top of the repo so make sure to add the location of the library to your includes path with something
 like:
 
-`-Iperipherals/`
+.. code-block::
+
+    -Iperipherals/
 
 In your Makefile create a variable which stores the series such as `CHIP_FAMILY` and alter the
 source files depending on it. For example (from [here](https://github.com/adafruit/circuitpython/blob/master/ports/atmel-samd/Makefile)):
 
-```
-SRC_C = \
-    peripherals/samd/clocks.c \
-    peripherals/samd/dma.c \
-    peripherals/samd/events.c \
-    peripherals/samd/external_interrupts.c \
-    peripherals/samd/sercom.c \
-    peripherals/samd/timers.c \
-    peripherals/samd/$(CHIP_FAMILY)/adc.c \
-    peripherals/$(CHIP_FAMILY)/cache.c
-```
+.. code-block::
+
+    SRC_C = \
+        peripherals/samd/clocks.c \
+        peripherals/samd/dma.c \
+        peripherals/samd/events.c \
+        peripherals/samd/external_interrupts.c \
+        peripherals/samd/sercom.c \
+        peripherals/samd/timers.c \
+        peripherals/samd/$(CHIP_FAMILY)/adc.c \
+        peripherals/$(CHIP_FAMILY)/cache.c
 
 Contributing
 ============
