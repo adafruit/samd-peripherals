@@ -27,6 +27,7 @@
 
 #include <string.h>
 
+#include "mphalport.h"
 #include "py/gc.h"
 #include "py/mpstate.h"
 
@@ -66,6 +67,7 @@ void init_shared_dma(void) {
 
     DMAC->CTRL.reg = DMAC_CTRL_DMAENABLE | DMAC_CTRL_LVLEN0;
 
+    // Non-audio channels will be configured on demand.
     for (uint8_t i = 0; i < AUDIO_DMA_CHANNEL_COUNT; i++) {
         dma_configure(i, 0, true);
     }
@@ -155,15 +157,17 @@ static int32_t shared_dma_transfer(void* peripheral,
         SercomSpi *s = &((Sercom*) peripheral)->SPI;
         s->INTFLAG.reg = SERCOM_SPI_INTFLAG_RXC | SERCOM_SPI_INTFLAG_DRE;
     }
-    // Start the RX job first so we don't miss the first byte. The TX job clocks
-    // the output.
+
+    // Start the RX job first so we don't miss the first byte. The TX job clocks the output.
+    // Disable interrupts during startup to make sure both RX and TX start at just about the same time.
+    mp_hal_disable_all_interrupts();
     if (rx_active) {
         dma_enable_channel(SHARED_RX_CHANNEL);
     }
     if (tx_active) {
         dma_enable_channel(SHARED_TX_CHANNEL);
     }
-
+    mp_hal_enable_all_interrupts();
 
     if (!sercom) {
         if (rx_active) {
@@ -177,7 +181,7 @@ static int32_t shared_dma_transfer(void* peripheral,
     // legitimate state for a DMA channel to be in (apparently), so we can't use that alone as a check.
     // Instead, let's look at the ACTIVE flag.  When DMA is hung, everything in ACTIVE is zeros.
     bool is_okay = false;
-    for (int i=0; i<10 && !is_okay; i++) {
+    for (int i = 0; i < 10 && !is_okay; i++) {
         bool complete = true;
         if (rx_active) {
             if (DMAC->Channel[SHARED_RX_CHANNEL].CHSTATUS.reg & 0x3)
@@ -190,7 +194,7 @@ static int32_t shared_dma_transfer(void* peripheral,
         is_okay = is_okay || (DMAC->ACTIVE.bit.ABUSY || complete);
     }
     if (!is_okay) {
-        for (int i=0; i<AUDIO_DMA_CHANNEL_COUNT; i++) {
+        for (int i = 0; i < AUDIO_DMA_CHANNEL_COUNT; i++) {
             if(DMAC->Channel[i].CHCTRLA.bit.ENABLE) {
                 DMAC->Channel[i].CHCTRLA.bit.ENABLE = 0;
                 DMAC->Channel[i].CHCTRLA.bit.ENABLE = 1;
