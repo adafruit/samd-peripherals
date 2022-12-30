@@ -28,9 +28,18 @@
 
 // Turn off cache and invalidate all data in it.
 void samd_peripherals_disable_and_clear_cache(void) {
+    // Memory fence for hardware and compiler reasons. If this routine is inlined, the compiler
+    // needs to know that everything written out be stored before this is called.
+    // -O2 optimization showed this was necessary.
+    __sync_synchronize();
+
     CMCC->CTRL.bit.CEN = 0;
     while (CMCC->SR.bit.CSTS) {}
     CMCC->MAINT0.bit.INVALL = 1;
+
+    // Memory fence for hardware and compiler reasons. Testing showed this second one is also
+    // necessary when compiled with -O2.
+    __sync_synchronize();
 }
 
 // Enable cache
