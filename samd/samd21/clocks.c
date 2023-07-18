@@ -142,16 +142,19 @@ static void init_clock_source_dfll48m_usb(uint32_t fine_calibration) {
     while (GCLK->STATUS.bit.SYNCBUSY) {}
 }
 
-void clock_init(bool has_crystal, uint32_t dfll48m_fine_calibration)
+void clock_init(bool has_rtc_crystal, uint32_t xosc_freq, bool xosc_is_crystal, uint32_t dfll48m_fine_calibration)
 {
+    // TODO: support using the external oscillator as the system clock source
+    // like the sam_d5x_e5x version of this function.
+
     init_clock_source_osc8m();
-    if (has_crystal) {
+    if (has_rtc_crystal) {
         init_clock_source_xosc32k();
     } else {
         init_clock_source_osc32k();
     }
 
-    if (has_crystal) {
+    if (has_rtc_crystal) {
         enable_clock_generator(3, GCLK_GENCTRL_SRC_XOSC32K_Val, 1);
         connect_gclk_to_peripheral(3, GCLK_CLKCTRL_ID_DFLL48_Val);
         init_clock_source_dfll48m_xosc();
@@ -160,7 +163,7 @@ void clock_init(bool has_crystal, uint32_t dfll48m_fine_calibration)
     }
 
     enable_clock_generator(0, GCLK_GENCTRL_SRC_DFLL48M_Val, 1);
-    if (has_crystal) {
+    if (has_rtc_crystal) {
         enable_clock_generator(2, GCLK_GENCTRL_SRC_XOSC32K_Val, 1);
     } else {
         enable_clock_generator(2, GCLK_GENCTRL_SRC_OSC32K_Val, 1);
