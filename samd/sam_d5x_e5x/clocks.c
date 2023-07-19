@@ -88,23 +88,77 @@ static void init_clock_source_xosc32k(void) {
                               OSC32KCTRL_XOSC32K_CGM(1);
 }
 
-static void init_clock_source_dpll0(void)
+/**
+ * @brief Initialize the DPLL clock source, which sources the main system clock.
+ */
+static void init_clock_source_dpll0(uint32_t xosc_freq, bool xosc_is_crystal)
 {
-    GCLK->PCHCTRL[OSCCTRL_GCLK_ID_FDPLL0].reg = GCLK_PCHCTRL_CHEN | GCLK_PCHCTRL_GEN(5);
-    OSCCTRL->Dpll[0].DPLLRATIO.reg = OSCCTRL_DPLLRATIO_LDRFRAC(0) | OSCCTRL_DPLLRATIO_LDR(59);
-    OSCCTRL->Dpll[0].DPLLCTRLB.reg = OSCCTRL_DPLLCTRLB_REFCLK(0);
+    bool has_xosc = (xosc_freq != 0);
+
+    uint8_t refclk_setting;
+
+    if (has_xosc) {
+        // If we have an external oscillator, use that as DPLL0's REFCLK.
+        uint8_t xtalen = xosc_is_crystal ? OSCCTRL_XOSCCTRL_XTALEN : 0;
+        refclk_setting = OSCCTRL_DPLLCTRLB_REFCLK_XOSC0_Val;
+
+        // When we're using an external clock source, we need to configure DPLL0 based on
+        // the frequency of that external clock source.
+        //
+        // According to the datasheet (28.6.5.1), the frequency of DPLL0 is dependent on its REFCLK
+        // by this formula:
+        // f_DPLL0 = f_REFCLK * (LDR + 1 + (LDRFRAC / 32)).
+        // If we have an external clock source, then we'll be setting REFCLK to XOSC0.
+        //
+        // Our desired output frequency for DPLL0 (f_DPLL0) is 120 MHz.
+        // We currently require xosc_freq to be an integer factor of 120 MHz, so we can ignore LDRFRAC.
+        // With LDRFRAC at 0, we just need to calculate LDR.
+        // Rearranging the variables, we get this:
+        // LDR = (f_DPLL0 / f_XOSC0) - 1
+        // LDR = (120 MHz / f_XOSC0) - 1
+        uint32_t ldr = (120000000 / xosc_freq) - 1;
+
+        OSCCTRL->XOSCCTRL[0].reg = OSCCTRL_XOSCCTRL_ENABLE | xtalen;
+        OSCCTRL->Dpll[0].DPLLRATIO.reg = OSCCTRL_DPLLRATIO_LDRFRAC(0) | OSCCTRL_DPLLRATIO_LDR(ldr);
+
+    } else {
+        // If we don't have an external oscillator, use GCLK 5 as DPLL0's REFLCK.
+        refclk_setting = OSCCTRL_DPLLCTRLB_REFCLK_GCLK_Val;
+        GCLK->PCHCTRL[OSCCTRL_GCLK_ID_FDPLL0].reg = GCLK_PCHCTRL_CHEN | GCLK_PCHCTRL_GEN(5);
+
+        // We also need to configure DPLL0 based on the the frequency of its REFCLK,
+        // which here is GCLK 5.
+        // GCLK 5 itself uses the DFLL48M as its source, but with a divisor of 24.
+        // So the output frequency of GCLK 5 is 2 MHz:
+        // f_DFLL = 48 MHz
+        // f_GCLK5 = 48 MHz / 24 = 2 MHz
+        //
+        // According to the datasheet (28.6.5.1), the frequency of DPLL0 is dependent on its REFCLK
+        // by this formula:
+        // f_DPLL0 = f_REFCLK * (LDR + 1 + (LDRFRAC / 32)).
+        //
+        // We want f_DPLL0 to be 120 MHz, and f_REFCLK is known beforehand as shown above.
+        // If we ignore LDRFRAC and leave it at 0, then we can calculate LDR with:
+        // LDR = (f_DPLL0 / f_REFCLK) - 1.
+        // LDR = (120 MHz / 2 MHz) - 1 = 59
+        OSCCTRL->Dpll[0].DPLLRATIO.reg = OSCCTRL_DPLLRATIO_LDRFRAC(0) | OSCCTRL_DPLLRATIO_LDR(59);
+    }
+
+    // Apply the REFCLK that was determined above.
+    OSCCTRL->Dpll[0].DPLLCTRLB.reg = OSCCTRL_DPLLCTRLB_REFCLK(refclk_setting);
+    // Enable this clock.
     OSCCTRL->Dpll[0].DPLLCTRLA.reg = OSCCTRL_DPLLCTRLA_ENABLE;
 
     while (!(OSCCTRL->Dpll[0].DPLLSTATUS.bit.LOCK || OSCCTRL->Dpll[0].DPLLSTATUS.bit.CLKRDY)) {}
 }
 
-void clock_init(bool has_crystal, uint32_t dfll48m_fine_calibration) {
+void clock_init(bool has_rtc_crystal, uint32_t xosc_freq, bool xosc_is_crystal, uint32_t dfll48m_fine_calibration) {
     // DFLL48M is enabled by default
     // TODO: handle fine calibration data.
 
     init_clock_source_osculp32k();
 
-    if (has_crystal) {
+    if (has_rtc_crystal) {
         init_clock_source_xosc32k();
         OSC32KCTRL->RTCCTRL.bit.RTCSEL = OSC32KCTRL_RTCCTRL_RTCSEL_XOSC32K_Val;
     } else {
@@ -113,13 +167,18 @@ void clock_init(bool has_crystal, uint32_t dfll48m_fine_calibration) {
 
     MCLK->CPUDIV.reg = MCLK_CPUDIV_DIV(1);
 
+    // Set GCLK_GEN[0], which is used for GCLK_MAIN, to use DPLL0 as its source.
+    // DPLL0's REFCLK is set in the init_clock_source_dpll0() call below.
     enable_clock_generator_sync(0, GCLK_GENCTRL_SRC_DPLL0_Val, 1, false);
     enable_clock_generator_sync(1, GCLK_GENCTRL_SRC_DFLL_Val, 1, false);
     enable_clock_generator_sync(4, GCLK_GENCTRL_SRC_DPLL0_Val, 1, false);
+    // Note(Qyriad): if !has_xosc, GCLK 5 is set as the REFCLK source for DPLL0 in
+    // init_clock_source_dpll0(), but I don't know if GCLK 5 is used elsewhere too,
+    // so I haven't made enabling GCLK 5 conditional on has_xosc here.
     enable_clock_generator_sync(5, GCLK_GENCTRL_SRC_DFLL_Val, 24, false);
     enable_clock_generator_sync(6, GCLK_GENCTRL_SRC_DFLL_Val, 4, false);
 
-    init_clock_source_dpll0();
+    init_clock_source_dpll0(xosc_freq, xosc_is_crystal);
 
     // Do this after all static clock init so that they aren't used dynamically.
     init_dynamic_clocks();
@@ -202,6 +261,13 @@ static uint32_t dpll_get_frequency(uint8_t index) {
             freq = 32768;
             break;
         case 0x2: // XOSC0
+            // If XOSC0 is being used as DPLL0's REFCLK, then we can figure out XOSC0's frequency.
+            if (OSCCTRL->Dpll[0].DPLLCTRLB.bit.REFCLK == OSCCTRL_DPLLCTRLB_REFCLK_XOSC0_Val) {
+                freq = osc_get_frequency(GCLK_SOURCE_XOSC0);
+            } else {
+                freq = 0;
+            }
+            break;
         case 0x3: // XOSC1
         default:
             return 0; // unknown
@@ -214,6 +280,22 @@ static uint32_t dpll_get_frequency(uint8_t index) {
 static uint32_t osc_get_frequency(uint8_t index) {
     switch (index) {
         case GCLK_SOURCE_XOSC0:
+            // If we're using XOSC0 as the REFCLK for DPLLL0, we can calculate XOSC0's frequency.
+            if (OSCCTRL->Dpll[0].DPLLCTRLB.bit.REFCLK == OSCCTRL_DPLLCTRLB_REFCLK_XOSC0_Val) {
+                // From the datasheet (28.6.5.1), the frequency of DPLL0 is dependent on
+                // its REFCLK by this formula:
+                // f_DPLL0 = f_REFCLK * (LDR + 1 + (LDRFRAC / 32)).
+                // We know f_DPLL is 120 MHz (the system clock rate).
+                // We currently always set LDRFRAC to 0, and we can retrieve LDR from the
+                // register its set in. Rearranging the variables, we get:
+                // f_XOSC0 = f_DPLL0 / (LDR + 1).
+                uint32_t ldr = OSCCTRL->Dpll[0].DPLLRATIO.bit.LDR;
+                uint32_t f_dpll0 = 120000000;
+                uint32_t f_xosc0 = f_dpll0 / (ldr + 1);
+                return f_xosc0;
+            }
+            // Otherwise, we don't know.
+            return 0;
         case GCLK_SOURCE_XOSC1:
             return 0; // unknown
         case GCLK_SOURCE_OSCULP32K:

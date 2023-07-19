@@ -56,7 +56,33 @@ void disconnect_gclk_from_peripheral(uint8_t gclk, uint8_t peripheral);
 void enable_clock_generator(uint8_t gclk, uint32_t source, uint16_t divisor);
 void disable_clock_generator(uint8_t gclk);
 
-void clock_init(bool has_crystal, uint32_t dfll48m_fine_calibration);
+/**
+ * @brief Called during port_init to setup system clocks.
+ *
+ * @param has_rtc_crystal Indicates that the board has a crystal for the real-time
+ * clock (RTC). If true, uses the microcontroller's XOSC32k as the RTC's clock source.
+ * For an individual board, this value is configured from BOARD_HAS_CRYSTAL in
+ * mpconfigboard.h.
+ *
+ * @param xosc_freq The frequency of a connected external oscillator, or 0 if no
+ * external oscillator is connected. Non-zero values should be the frequency
+ * in Hertz (Hz) of an external oscillator connected to an XIN pin on this
+ * microcontroller. This is currently only implemented for SAMx5x chips.
+ * For an individual board, this value is configured from BOARD_XOSC_FREQ_HZ
+ * in mpconfigboard.h.
+ *
+ * @param xosc_is_crystal Set to true if the external oscillator (XOSC) described by
+ * `xosc_freq` is a crystal oscillator, or false if it is not. If there is no XOSC,
+ * then `xosc_freq` should be set to 0, in which case this parameter is ignored.
+ * This is currently only implemented for SAMx5x chips.
+ * For an individual board, this value is configured from BOARD_XOSC_IS_CRYSTAL
+ * in mpconfigboard.h.
+ *
+ * @param dfll48m_fine_calibration The fine calibration value for the DFLL48M.
+ * Currently only implemented for SAMD21 chips, and only used if `has_rtc_crystal`
+ * is false.
+ */
+void clock_init(bool has_rtc_crystal, uint32_t xosc_freq, bool xosc_is_crystal, uint32_t dfll48m_fine_calibration);
 void init_dynamic_clocks(void);
 
 bool clock_get_enabled(uint8_t type, uint8_t index);
