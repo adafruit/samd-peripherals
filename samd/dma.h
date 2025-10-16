@@ -36,9 +36,25 @@
 // vm) because the general_dma resource will be shared between the REPL and SPI
 // flash. Both uses must block each other in order to prevent conflict.
 #define AUDIO_DMA_CHANNEL_COUNT 4
-#define DMA_CHANNEL_COUNT 32
 
-uint8_t dma_allocate_channel(bool audio_channel);
+#ifdef SAMD21
+#define DMA_CHANNEL_COUNT 12
+#endif
+
+#ifdef SAM_D5X_E5X
+#define DMA_CHANNEL_COUNT 32
+#endif
+
+// Returned when a channel can't be allocated.
+#define NO_DMA_CHANNEL 0xff
+
+// Failure values
+#define DMA_FAILURE_NO_CHANNEL_AVAILABLE (-1)
+#define DMA_FAILURE_INCOMPLETE (-2)
+#define DMA_FAILURE_ALIGNMENT (-3)
+
+uint8_t dma_allocate_audio_channel(void);
+uint8_t dma_allocate_non_audio_channel(void);
 void dma_free_channel(uint8_t channel);
 
 void init_shared_dma(void);
@@ -64,14 +80,11 @@ typedef struct {
     bool tx_active;
     bool sercom;
     int8_t failure;
-} dma_descr_t;
+} dma_transfer_t;
 
-dma_descr_t shared_dma_transfer_start(void* peripheral,
-                                   const uint8_t* buffer_out, volatile uint32_t* dest,
-                                   volatile uint32_t* src, uint8_t* buffer_in,
-                                   uint32_t length, uint8_t tx);
-bool shared_dma_transfer_finished(dma_descr_t descr);
-int shared_dma_transfer_close(dma_descr_t descr);
+void shared_dma_transfer_start(dma_transfer_t* transfer, void* peripheral, const uint8_t* buffer_out, volatile uint32_t* dest, volatile uint32_t* src, uint8_t* buffer_in,  uint32_t length, uint8_t tx);
+bool shared_dma_transfer_finished(dma_transfer_t* transfer);
+int shared_dma_transfer_close(dma_transfer_t* transfer);
 
 void dma_configure(uint8_t channel_number, uint8_t trigsrc, bool output_event);
 void dma_enable_channel(uint8_t channel_number);

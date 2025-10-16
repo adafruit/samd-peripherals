@@ -27,8 +27,8 @@
 
 #include <string.h>
 
-#include "mphalport.h"
 #include "py/gc.h"
+#include "py/mphal.h"
 #include "py/mpstate.h"
 
 #include "hal/utils/include/utils.h"
@@ -51,19 +51,31 @@ COMPILER_ALIGNED(16) static DmacDescriptor write_back_descriptors[DMA_CHANNEL_CO
 
 static bool dma_allocated[DMA_CHANNEL_COUNT];
 
-uint8_t dma_allocate_channel(bool audio_channel) {
-    uint8_t channel;
-    uint8_t lim = audio_channel ? AUDIO_DMA_CHANNEL_COUNT : DMA_CHANNEL_COUNT;
-    for (channel = (audio_channel ? 0 : AUDIO_DMA_CHANNEL_COUNT); channel < lim; channel++) {
+uint8_t dma_allocate_audio_channel(void) {
+    for (uint8_t channel = 0; channel < AUDIO_DMA_CHANNEL_COUNT; channel++) {
         if (!dma_allocated[channel]) {
             dma_allocated[channel] = true;
             return channel;
         }
     }
-    return channel; // i.e., return failure
+    return NO_DMA_CHANNEL;
+}
+
+uint8_t dma_allocate_non_audio_channel(void) {
+    // Start allocating above audio channels.
+    for (uint8_t channel = AUDIO_DMA_CHANNEL_COUNT; channel < DMA_CHANNEL_COUNT; channel++) {
+        if (!dma_allocated[channel]) {
+            dma_allocated[channel] = true;
+            return channel;
+        }
+    }
+    return NO_DMA_CHANNEL;
 }
 
 void dma_free_channel(uint8_t channel) {
+    if (channel == NO_DMA_CHANNEL) {
+        return;
+    }
     assert(dma_allocated[channel]);
     dma_disable_channel(channel);
     dma_allocated[channel] = false;
@@ -87,6 +99,7 @@ void init_shared_dma(void) {
 
     DMAC->CTRL.reg = DMAC_CTRL_DMAENABLE | DMAC_CTRL_LVLEN0;
 
+    // Configure audio channels in advance.
     // Non-audio channels will be configured on demand.
     for (uint8_t i = 0; i < AUDIO_DMA_CHANNEL_COUNT; i++) {
         dma_configure(i, 0, true);
@@ -97,21 +110,24 @@ void init_shared_dma(void) {
 // If buffer_out is a real buffer, ignore tx.
 // DMAs buffer_out -> dest
 // DMAs src -> buffer_in
-dma_descr_t shared_dma_transfer_start(void* peripheral,
-                                   const uint8_t* buffer_out, volatile uint32_t* dest,
-                                   volatile uint32_t* src, uint8_t* buffer_in,
-                                   uint32_t length, uint8_t tx) {
-    dma_descr_t res;
-    res.progress = 0;
+void shared_dma_transfer_start(dma_transfer_t *transfer, void* peripheral, const uint8_t* buffer_out, volatile uint32_t* dest, volatile uint32_t* src, uint8_t* buffer_in, uint32_t length, uint8_t tx) {
+    transfer->progress = 0;
 
-    uint8_t tx_channel = dma_allocate_channel(false);
-    uint8_t rx_channel = dma_allocate_channel(false);
+    // There's always a tx DMA channel, though it may be sending only the tx byte if buffer_out is NULL.
+    uint8_t tx_channel = dma_allocate_non_audio_channel();
+    if (tx_channel == NO_DMA_CHANNEL) {
+        transfer->failure = DMA_FAILURE_NO_CHANNEL_AVAILABLE;
+        return;
+    }
 
-    if ((tx_channel >= DMA_CHANNEL_COUNT) || (rx_channel >= DMA_CHANNEL_COUNT) ||
-        !dma_channel_free(tx_channel) ||
-        (buffer_in != NULL && !dma_channel_free(rx_channel))) {
-        res.failure = -1;
-        return res;
+    // Allocate an rx dma channel only if we're going to read.
+    uint8_t rx_channel = NO_DMA_CHANNEL;
+    if (buffer_in != NULL) {
+        rx_channel = dma_allocate_non_audio_channel();
+        if (rx_channel == NO_DMA_CHANNEL) {
+            transfer->failure = DMA_FAILURE_NO_CHANNEL_AVAILABLE;
+            return;
+        }
     }
 
     uint32_t beat_size = DMAC_BTCTRL_BEATSIZE_BYTE;
@@ -122,10 +138,11 @@ dma_descr_t shared_dma_transfer_start(void* peripheral,
     #ifdef SAM_D5X_E5X
     if (peripheral == QSPI) {
         // Check input alignment on word boundaries.
+        // NULLs will pass this test, so no need to check for them separately.
         if ((((uint32_t) buffer_in) & 0x3) != 0 ||
             (((uint32_t) buffer_out) & 0x3) != 0) {
-            res.failure = -3;
-            return res;
+            transfer->failure = DMA_FAILURE_ALIGNMENT;
+            return;
         }
         beat_size = DMAC_BTCTRL_BEATSIZE_WORD | DMAC_BTCTRL_SRCINC | DMAC_BTCTRL_DSTINC;
         beat_length /= 4;
@@ -141,9 +158,10 @@ dma_descr_t shared_dma_transfer_start(void* peripheral,
     } else {
     #endif
 
+        // There is always a TX channel.
         dma_configure(tx_channel, sercom_index(peripheral) * 2 + FIRST_SERCOM_TX_TRIGSRC, false);
         tx_active = true;
-        if (buffer_in != NULL) {
+        if (rx_channel != NO_DMA_CHANNEL) {
             dma_configure(rx_channel, sercom_index(peripheral) * 2 + FIRST_SERCOM_RX_TRIGSRC, false);
             rx_active = true;
         }
@@ -225,7 +243,7 @@ dma_descr_t shared_dma_transfer_start(void* peripheral,
         is_okay = is_okay || (DMAC->ACTIVE.bit.ABUSY || complete);
     }
     if (!is_okay) {
-        for (int i = 0; i < AUDIO_DMA_CHANNEL_COUNT; i++) {
+        for (int i = 0; i < DMA_CHANNEL_COUNT; i++) {
             if(DMAC->Channel[i].CHCTRLA.bit.ENABLE) {
                 DMAC->Channel[i].CHCTRLA.bit.ENABLE = 0;
                 DMAC->Channel[i].CHCTRLA.bit.ENABLE = 1;
@@ -233,46 +251,50 @@ dma_descr_t shared_dma_transfer_start(void* peripheral,
         }
     }
     #endif
-    res.peripheral = peripheral;
-    res.length = length;
-    res.rx_channel = rx_channel;
-    res.tx_channel = tx_channel;
-    res.rx_active = rx_active;
-    res.tx_active = tx_active;
-    res.sercom = sercom;
-    res.failure = 0;
-    return res;
+    transfer->peripheral = peripheral;
+    transfer->length = length;
+    transfer->rx_channel = rx_channel;
+    transfer->tx_channel = tx_channel;
+    transfer->rx_active = rx_active;
+    transfer->tx_active = tx_active;
+    transfer->sercom = sercom;
+    transfer->failure = 0;
+    transfer->progress = 0;
 }
 
-bool shared_dma_transfer_finished(dma_descr_t descr) {
-    if (descr.failure != 0) {
+bool shared_dma_transfer_finished(dma_transfer_t* transfer) {
+    if (transfer->failure != 0) {
         return true;
     }
 
-    if (descr.progress < 1 && descr.rx_active) {
-        if ((dma_transfer_status(descr.rx_channel) & 0x3) == 0) {
+    if (transfer->progress < 1 && transfer->rx_active) {
+        if ((dma_transfer_status(transfer->rx_channel) & 0x3) == 0) {
+            // RX hasn't finished.
             return false;
         }
-        descr.progress = 1;
+        // RX has finished
+        transfer->progress = 1;
     }
-    if (descr.progress < 2 && descr.tx_active) {
-        if ((dma_transfer_status(descr.tx_channel) & 0x3) == 0) {
+    if (transfer->progress < 2 && transfer->tx_active) {
+        if ((dma_transfer_status(transfer->tx_channel) & 0x3) == 0) {
+            // TX hasn't finished.
             return false;
         }
-        descr.progress = 2;
+        // TX has finished. RX has also finished, or there is no RX.
+        transfer->progress = 2;
     }
 
-    if (descr.progress < 3 && descr.sercom) {
-        Sercom* s = (Sercom*) descr.peripheral;
+    if (transfer->progress < 3 && transfer->sercom) {
+        Sercom* s = (Sercom*) transfer->peripheral;
         // Wait for the SPI transfer to complete.
         if (s->SPI.INTFLAG.bit.TXC == 0) {
             return false;
         }
-        descr.progress = 3;
+        transfer->progress = 3;
 
         // This transmit will cause the RX buffer overflow but we're OK with that.
         // So, read the garbage and clear the overflow flag.
-        if (!descr.rx_active) {
+        if (!transfer->rx_active) {
             while (s->SPI.INTFLAG.bit.RXC == 1) {
                 s->SPI.DATA.reg;
             }
@@ -284,19 +306,20 @@ bool shared_dma_transfer_finished(dma_descr_t descr) {
     return true;
 }
 
-int shared_dma_transfer_close(dma_descr_t descr) {
-    dma_free_channel(descr.tx_channel);
-    dma_free_channel(descr.rx_channel);
+int shared_dma_transfer_close(dma_transfer_t* transfer) {
+    // It is not an error if either is NO_DMA_CHANNEL.
+    dma_free_channel(transfer->tx_channel);
+    dma_free_channel(transfer->rx_channel);
 
-    if (descr.failure != 0) {
-        return descr.failure;
+    if (transfer->failure != 0) {
+        return transfer->failure;
     }
 
-    if ((!descr.rx_active || dma_transfer_status(descr.rx_channel) == DMAC_CHINTFLAG_TCMPL) &&
-        (!descr.tx_active || dma_transfer_status(descr.tx_channel) == DMAC_CHINTFLAG_TCMPL)) {
-        return descr.length;
+    if ((!transfer->rx_active || dma_transfer_status(transfer->rx_channel) == DMAC_CHINTFLAG_TCMPL) &&
+        (!transfer->tx_active || dma_transfer_status(transfer->tx_channel) == DMAC_CHINTFLAG_TCMPL)) {
+        return transfer->length;
     }
-    return -2;
+    return DMA_FAILURE_INCOMPLETE;
 }
 
 // Do write and read simultaneously. If buffer_out is NULL, write the tx byte over and over.
@@ -307,12 +330,14 @@ static int32_t shared_dma_transfer(void* peripheral,
                                    const uint8_t* buffer_out, volatile uint32_t* dest,
                                    volatile uint32_t* src, uint8_t* buffer_in,
                                    uint32_t length, uint8_t tx) {
-    dma_descr_t descr = shared_dma_transfer_start(peripheral, buffer_out, dest, src, buffer_in, length, tx);
-    if (descr.failure != 0) {
-        return descr.failure;
+    dma_transfer_t transfer;
+    shared_dma_transfer_start(&transfer, peripheral, buffer_out, dest, src, buffer_in, length, tx);
+    if (transfer.failure != 0) {
+        return transfer.failure;
     }
-    while (!shared_dma_transfer_finished(descr)) {}
-    return shared_dma_transfer_close(descr);
+    while (!shared_dma_transfer_finished(&transfer)) {}
+
+    return shared_dma_transfer_close(&transfer);
 }
 
 int32_t sercom_dma_transfer(Sercom* sercom, const uint8_t* buffer_out, uint8_t* buffer_in,

@@ -58,7 +58,6 @@ void dma_configure(uint8_t channel_number, uint8_t trigsrc, bool output_event) {
 
 void dma_enable_channel(uint8_t channel_number) {
     common_hal_mcu_disable_interrupts();
-    /** Select the DMA channel and clear software trigger */
     DMAC->CHID.reg = DMAC_CHID_ID(channel_number);
     // Clear any previous interrupts.
     DMAC->CHINTFLAG.reg = DMAC_CHINTFLAG_MASK;
@@ -68,7 +67,6 @@ void dma_enable_channel(uint8_t channel_number) {
 
 void dma_disable_channel(uint8_t channel_number) {
     common_hal_mcu_disable_interrupts();
-    /** Select the DMA channel and clear software trigger */
     DMAC->CHID.reg = DMAC_CHID_ID(channel_number);
     DMAC->CHCTRLA.bit.ENABLE = false;
     common_hal_mcu_enable_interrupts();
@@ -76,7 +74,6 @@ void dma_disable_channel(uint8_t channel_number) {
 
 void dma_suspend_channel(uint8_t channel_number) {
     common_hal_mcu_disable_interrupts();
-    /** Select the DMA channel and clear software trigger */
     DMAC->CHID.reg = DMAC_CHID_ID(channel_number);
     DMAC->CHCTRLB.bit.CMD = DMAC_CHCTRLB_CMD_SUSPEND_Val;
     common_hal_mcu_enable_interrupts();
@@ -84,7 +81,6 @@ void dma_suspend_channel(uint8_t channel_number) {
 
 void dma_resume_channel(uint8_t channel_number) {
     common_hal_mcu_disable_interrupts();
-    /** Select the DMA channel and clear software trigger */
     DMAC->CHID.reg = DMAC_CHID_ID(channel_number);
     DMAC->CHCTRLB.bit.CMD = DMAC_CHCTRLB_CMD_RESUME_Val;
     DMAC->CHINTFLAG.reg = DMAC_CHINTFLAG_SUSP;
@@ -93,7 +89,6 @@ void dma_resume_channel(uint8_t channel_number) {
 
 bool dma_channel_enabled(uint8_t channel_number) {
     common_hal_mcu_disable_interrupts();
-    /** Select the DMA channel and clear software trigger */
     DMAC->CHID.reg = DMAC_CHID_ID(channel_number);
     bool enabled = DMAC->CHCTRLA.bit.ENABLE;
     common_hal_mcu_enable_interrupts();
@@ -102,7 +97,6 @@ bool dma_channel_enabled(uint8_t channel_number) {
 
 uint8_t dma_transfer_status(uint8_t channel_number) {
     common_hal_mcu_disable_interrupts();
-    /** Select the DMA channel and clear software trigger */
     DMAC->CHID.reg = DMAC_CHID_ID(channel_number);
     uint8_t status = DMAC->CHINTFLAG.reg;
     common_hal_mcu_enable_interrupts();
