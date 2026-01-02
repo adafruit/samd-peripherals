@@ -76,7 +76,7 @@ void dma_free_channel(uint8_t channel) {
     if (channel == NO_DMA_CHANNEL) {
         return;
     }
-    assert(dma_allocated[channel]);
+    // Might or might not be already allocated.
     dma_disable_channel(channel);
     dma_allocated[channel] = false;
 }
