@@ -32,4 +32,13 @@
 
 void samd_peripherals_adc_setup(struct adc_sync_descriptor *adc, Adc *instance);
 
+// Turn on and calibrate the ADC, then set it up for one 12-bit reading of pos_input against GND.
+// gain is used only on SAMD21. Call samd_peripherals_adc_read() for the reading and
+// adc_sync_deinit() when done.
+void samd_peripherals_adc_start(struct adc_sync_descriptor *adc, Adc *instance,
+    uint8_t reference, uint8_t gain, uint8_t pos_input);
+
+// Read twice and return the second reading. The first one after a configuration change is unreliable.
+uint16_t samd_peripherals_adc_read(struct adc_sync_descriptor *adc);
+
 #endif  // MICROPY_INCLUDED_ATMEL_SAMD_PERIPHERALS_ADC_H
