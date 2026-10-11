@@ -113,14 +113,9 @@ void init_shared_dma(void) {
 void shared_dma_transfer_start(dma_transfer_t *transfer, void* peripheral, const uint8_t* buffer_out, volatile uint32_t* dest, volatile uint32_t* src, uint8_t* buffer_in, uint32_t length, uint8_t tx) {
     transfer->progress = 0;
 
-    // There's always a tx DMA channel, though it may be sending only the tx byte if buffer_out is NULL.
-    uint8_t tx_channel = dma_allocate_non_audio_channel();
-    if (tx_channel == NO_DMA_CHANNEL) {
-        transfer->failure = DMA_FAILURE_NO_CHANNEL_AVAILABLE;
-        return;
-    }
-
     // Allocate an rx dma channel only if we're going to read.
+    // Allocate it before tx so it gets the lower channel number, and so wins
+    // static arbitration: if rx falls behind, the SERCOM receiver overflows.
     uint8_t rx_channel = NO_DMA_CHANNEL;
     if (buffer_in != NULL) {
         rx_channel = dma_allocate_non_audio_channel();
@@ -128,6 +123,14 @@ void shared_dma_transfer_start(dma_transfer_t *transfer, void* peripheral, const
             transfer->failure = DMA_FAILURE_NO_CHANNEL_AVAILABLE;
             return;
         }
+    }
+
+    // There's always a tx DMA channel, though it may be sending only the tx byte if buffer_out is NULL.
+    uint8_t tx_channel = dma_allocate_non_audio_channel();
+    if (tx_channel == NO_DMA_CHANNEL) {
+        dma_free_channel(rx_channel);
+        transfer->failure = DMA_FAILURE_NO_CHANNEL_AVAILABLE;
+        return;
     }
 
     uint32_t beat_size = DMAC_BTCTRL_BEATSIZE_BYTE;
