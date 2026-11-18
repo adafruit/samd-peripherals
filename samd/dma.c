@@ -47,9 +47,27 @@ COMPILER_ALIGNED(16) static DmacDescriptor write_back_descriptors[DMA_CHANNEL_CO
 #ifdef SAM_D5X_E5X
 #define FIRST_SERCOM_RX_TRIGSRC 0x04
 #define FIRST_SERCOM_TX_TRIGSRC 0x05
+#define STALLED_POLLS_BEFORE_RESTART 1000
 #endif
 
 static bool dma_allocated[DMA_CHANNEL_COUNT];
+
+#ifdef SAM_D5X_E5X
+static void restart_enabled_channels(void) {
+    for (int i = 0; i < DMA_CHANNEL_COUNT; i++) {
+        if (DMAC->Channel[i].CHCTRLA.bit.ENABLE) {
+            DMAC->Channel[i].CHCTRLA.bit.ENABLE = 0;
+            DMAC->Channel[i].CHCTRLA.bit.ENABLE = 1;
+        }
+    }
+}
+
+// SAMD51 rev A erratum 2.10.2: a channel can stall with CHSTATUS BUSY|PEND while nothing is
+// active, and every other channel waits behind it. This can happen in the middle of a transfer.
+static bool dma_stalled(void) {
+    return DMAC->BUSYCH.reg != 0 && !DMAC->ACTIVE.bit.ABUSY;
+}
+#endif
 
 uint8_t dma_allocate_audio_channel(void) {
     for (uint8_t channel = 0; channel < AUDIO_DMA_CHANNEL_COUNT; channel++) {
@@ -246,12 +264,7 @@ void shared_dma_transfer_start(dma_transfer_t *transfer, void* peripheral, const
         is_okay = is_okay || (DMAC->ACTIVE.bit.ABUSY || complete);
     }
     if (!is_okay) {
-        for (int i = 0; i < DMA_CHANNEL_COUNT; i++) {
-            if(DMAC->Channel[i].CHCTRLA.bit.ENABLE) {
-                DMAC->Channel[i].CHCTRLA.bit.ENABLE = 0;
-                DMAC->Channel[i].CHCTRLA.bit.ENABLE = 1;
-            }
-        }
+        restart_enabled_channels();
     }
     #endif
     transfer->peripheral = peripheral;
@@ -263,12 +276,22 @@ void shared_dma_transfer_start(dma_transfer_t *transfer, void* peripheral, const
     transfer->sercom = sercom;
     transfer->failure = 0;
     transfer->progress = 0;
+    transfer->stalled_polls = 0;
 }
 
 bool shared_dma_transfer_finished(dma_transfer_t* transfer) {
     if (transfer->failure != 0) {
         return true;
     }
+
+    #ifdef SAM_D5X_E5X
+    if (!dma_stalled()) {
+        transfer->stalled_polls = 0;
+    } else if (++transfer->stalled_polls >= STALLED_POLLS_BEFORE_RESTART) {
+        restart_enabled_channels();
+        transfer->stalled_polls = 0;
+    }
+    #endif
 
     if (transfer->progress < 1 && transfer->rx_active) {
         if ((dma_transfer_status(transfer->rx_channel) & 0x3) == 0) {
