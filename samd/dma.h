@@ -80,6 +80,7 @@ typedef struct {
     bool tx_active;
     bool sercom;
     int8_t failure;
+    uint16_t stalled_polls;
 } dma_transfer_t;
 
 void shared_dma_transfer_start(dma_transfer_t* transfer, void* peripheral, const uint8_t* buffer_out, volatile uint32_t* dest, volatile uint32_t* src, uint8_t* buffer_in,  uint32_t length, uint8_t tx);
